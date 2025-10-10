@@ -190,30 +190,10 @@ export default function Home() {
     <>
       {/* Banner Superior de Escasez */}
       <div className="bg-gradient-to-r from-[#0059F1] to-blue-700 text-white py-3 px-4 shadow-lg">
-        <div className="container mx-auto flex justify-between items-center">
+        <div className="container mx-auto text-center">
           <p className="text-sm md:text-base font-semibold">
             Solo 2 clínicas nuevas este mes para garantizar resultados · Reserva tu plaza antes de que se agoten
           </p>
-          <div className="flex gap-2">
-            <a
-              href="/test"
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
-            >
-              Probar
-            </a>
-            <a
-              href="/generate-url"
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
-            >
-              URLs
-            </a>
-            <a
-              href="/onboarding"
-              className="text-xs bg-white/20 hover:bg-white/30 px-3 py-1 rounded-full transition-colors"
-            >
-              Parte de Trabajo
-            </a>
-          </div>
         </div>
       </div>
 

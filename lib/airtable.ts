@@ -15,18 +15,6 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
 const AIRTABLE_TABLE_CLIENTES = process.env.AIRTABLE_TABLE_CLIENTES;
-const AIRTABLE_TABLE_REPARACIONES = process.env.AIRTABLE_TABLE_REPARACIONES;
-
-interface ReparacionRecord {
-  id?: string;
-  fields: {
-    Cliente?: string;
-    Técnico?: string;
-    Dirección?: string;
-    Reparación?: string;
-    [key: string]: any;
-  };
-}
 
 // Ensure table names with spaces/accents are URL-safe
 const getBaseUrl = (tableName: string) => `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`;
@@ -205,32 +193,4 @@ export async function updateRecord(tableName: string, id: string, fields: Record
 // Specific function for creating clients
 export async function createClient(clientData: any): Promise<{ id: string }> {
   return createRecord(AIRTABLE_TABLE_CLIENTES!, clientData);
-}
-
-// Functions for Reparaciones table
-export async function getReparacionById(recordId: string): Promise<ReparacionRecord | null> {
-  try {
-    const response = await makeRequest(`${getBaseUrl(AIRTABLE_TABLE_REPARACIONES!)}/${recordId}`);
-    if (!response) {
-      throw new Error('No response received from Airtable');
-    }
-    const data: ReparacionRecord = await response.json();
-    return data;
-  } catch (error) {
-    console.error(`Error getting reparacion record ${recordId}:`, error);
-    return null;
-  }
-}
-
-export async function createWorkOrder(workOrderData: any): Promise<{ id: string }> {
-  return createRecord(AIRTABLE_TABLE_REPARACIONES!, workOrderData);
-}
-
-export async function updateReparacion(recordId: string, fields: Record<string, any>): Promise<{ id: string }> {
-  return updateRecord(AIRTABLE_TABLE_REPARACIONES!, recordId, fields);
-}
-
-// Generate unique URL for a specific reparacion record
-export function generateWorkOrderUrl(recordId: string, baseUrl: string = 'http://localhost:3000'): string {
-  return `${baseUrl}/onboarding?recordId=${recordId}`;
 }

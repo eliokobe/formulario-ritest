@@ -1,37 +1,32 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { workOrderSchema, type WorkOrderFormData } from '@/lib/validations';
+import { clientSchema, type ClientFormData } from '@/lib/validations';
 import { FileUpload } from '@/components/ui/file-upload';
-import { CameraCapture } from '@/components/ui/camera-capture';
 import { uploadFiles } from '@/lib/upload';
 import { useToast } from '@/hooks/useToastClient';
 import { Toast } from '@/components/ui/toast';
-import { ChevronLeft, ChevronRight, CheckCircle, Building2, Wrench, Camera } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Building2, Globe, Upload, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 const steps = [
   { id: 1, title: 'Datos Generales', icon: Building2 },
-  { id: 2, title: 'Reparación', icon: Wrench },
-  { id: 3, title: 'Documentación', icon: Camera },
+  { id: 2, title: 'Presencia Digital', icon: Globe },
+  { id: 3, title: 'Archivos', icon: Upload },
+  { id: 4, title: 'Seguridad', icon: Shield },
 ];
 
-export default function WorkOrderPage() {
-  const searchParams = useSearchParams();
-  const recordId = searchParams.get('recordId');
-  
+export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [invoiceFiles, setInvoiceFiles] = useState<File[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(!!recordId);
-  const [reparacionData, setReparacionData] = useState<any>(null);
+  const [logoFiles, setLogoFiles] = useState<File[]>([]);
+  const [catalogFiles, setCatalogFiles] = useState<File[]>([]);
+  const [hasGoogleBusiness, setHasGoogleBusiness] = useState<string>('');
   const { toast, showToast, hideToast } = useToast();
 
   const {
@@ -42,85 +37,17 @@ export default function WorkOrderPage() {
     getValues,
     reset,
     watch,
-    setValue,
-  } = useForm<WorkOrderFormData>({
-    resolver: zodResolver(workOrderSchema),
+  } = useForm<ClientFormData>({
+    resolver: zodResolver(clientSchema),
     mode: 'onChange',
   });
-
-  // Cargar datos de Airtable si hay recordId
-  useEffect(() => {
-    if (recordId) {
-      const loadReparacionData = async () => {
-        try {
-          setIsLoadingData(true);
-          
-          // Modo de prueba: usar datos simulados si el recordId es conocido
-          if (recordId === 'recNLQJv5V3qMPvRZ' || recordId === 'recvMhaeHZ1Gu2ot8' || recordId === 'recae5A25aLJsuzHB') {
-            // Datos simulados basados en tu tabla de Airtable
-            const mockData = {
-              'recNLQJv5V3qMPvRZ': {
-                Cliente: 'Antonio Pushades Año',
-                Dirección: 'Antonio Pushades Año',
-                Técnico: 'Juan Carlos'
-              },
-              'recvMhaeHZ1Gu2ot8': {
-                Cliente: 'Pere Vicenç Balfegó Brull',
-                Dirección: 'Pere Vicenç Balfegó Brull',
-                Técnico: 'Marc'
-              },
-              'recae5A25aLJsuzHB': {
-                Cliente: 'Jose González Fernandez',
-                Dirección: 'Santa Olalla',
-                Técnico: 'Juan Carlos'
-              }
-            };
-
-            const data = mockData[recordId as keyof typeof mockData];
-            if (data) {
-              setReparacionData(data);
-              setValue('Cliente', data.Cliente);
-              setValue('Dirección', data.Dirección);
-              setValue('Técnico', data.Técnico);
-              showToast('Datos cargados desde modo de prueba', 'success');
-            }
-          } else {
-            // Intentar cargar desde Airtable
-            const response = await fetch(`/api/reparaciones?recordId=${recordId}`);
-            
-            if (!response.ok) {
-              throw new Error('No se pudieron cargar los datos de la reparación');
-            }
-            
-            const data = await response.json();
-            setReparacionData(data);
-            
-            // Precargar los campos del formulario
-            setValue('Cliente', data.Cliente || '');
-            setValue('Dirección', data.Dirección || '');
-            setValue('Técnico', data.Técnico || '');
-            
-            showToast('Datos cargados desde Airtable', 'success');
-          }
-          
-        } catch (error) {
-          console.error('Error cargando datos de reparación:', error);
-          showToast('Error cargando datos. Usando modo manual.', 'error');
-        } finally {
-          setIsLoadingData(false);
-        }
-      };
-
-      loadReparacionData();
-    }
-  }, [recordId, setValue, showToast]);
 
   const nextStep = async () => {
     const fieldsToValidate = getFieldsForStep(currentStep);
     const isValid = await trigger(fieldsToValidate);
     
     if (isValid) {
-      setCurrentStep(prev => Math.min(prev + 1, 3));
+      setCurrentStep(prev => Math.min(prev + 1, 4));
     }
   };
 
@@ -128,43 +55,39 @@ export default function WorkOrderPage() {
     setCurrentStep(prev => Math.max(prev - 1, 1));
   };
 
-  const getFieldsForStep = (step: number): (keyof WorkOrderFormData)[] => {
-    const watchProblemSolved = watch('¿Has conseguido solucionar el problema?');
-    const watchWhatDid = watch('¿Qué has tenido que hacer?');
+  const getFieldsForStep = (step: number): (keyof ClientFormData)[] => {
+    const watchGoogleBusiness = watch('¿Tienen ficha en Google Business?');
     
     switch (step) {
       case 1:
-        return ['Cliente', 'Dirección', 'Técnico'];
+        return ['Nombre de la clínica', 'Email', 'Teléfono', 'Dirección', 'Horario de atención'];
       case 2:
-        const fieldsStep2: (keyof WorkOrderFormData)[] = ['¿Has conseguido solucionar el problema?'];
+        const fieldsStep2: (keyof ClientFormData)[] = ['¿Tienen más de una sede?', '¿Tienen ficha en Google Business?', 'Enlace a su web', '¿Qué calendario usan?', '¿Cuántos calendario tienen?'];
         
-        if (watchProblemSolved === 'Reparado') {
-          fieldsStep2.push('¿Qué has tenido que hacer?');
-          
-          if (watchWhatDid === 'Repara el cuadro eléctrico') {
-            fieldsStep2.push('¿Qué has tenido que reparar del cuadro eléctrico?');
-          }
-        } else if (watchProblemSolved === 'Sin reparar') {
-          fieldsStep2.push('¿Qué problema has tenido?');
+        // Solo agregar el campo de Google Business URL si respondió "Sí"
+        if (watchGoogleBusiness === 'Sí') {
+          fieldsStep2.splice(2, 0, 'Enlace a ficha de Google Business');
         }
         
         return fieldsStep2;
       case 3:
         return [];
+      case 4:
+        return ['Password'];
       default:
         return [];
     }
   };
 
-  const onSubmit = async (data: WorkOrderFormData) => {
-    console.log('Parte de trabajo enviado con datos:', data);
+  const onSubmit = async (data: ClientFormData) => {
+    console.log('Formulario enviado con datos:', data);
     
-    if (photoFiles.length === 0) {
-      showToast('La foto del punto de recarga es requerida', 'error');
+    if (logoFiles.length === 0) {
+      showToast('El logo es requerido', 'error');
       return;
     }
-    if (invoiceFiles.length === 0) {
-      showToast('La factura del servicio es requerida', 'error');
+    if (catalogFiles.length === 0) {
+      showToast('El catálogo es requerido', 'error');
       return;
     }
 
@@ -173,33 +96,29 @@ export default function WorkOrderPage() {
     try {
       console.log('Iniciando carga de archivos...');
       // Upload files
-      const [photoUploads, invoiceUploads] = await Promise.all([
-        uploadFiles(photoFiles),
-        uploadFiles(invoiceFiles),
+      const [logoUploads, catalogUploads] = await Promise.all([
+        uploadFiles(logoFiles),
+        uploadFiles(catalogFiles),
       ]);
       
-      console.log('Archivos cargados:', { photoUploads, invoiceUploads });
+      console.log('Archivos cargados:', { logoUploads, catalogUploads });
 
       // Prepare data for Airtable
-      const workOrderData: Record<string, any> = {
+      const clientData: Record<string, any> = {
         ...data,
-        'Foto punto de recarga': photoUploads,
-        'Factura del servicio': invoiceUploads,
+        Logo: logoUploads,
+        Catálogo: catalogUploads,
+        Password: data.Password,
       };
-
-      // Si hay recordId, incluirlo para actualizar el registro existente
-      if (recordId) {
-        workOrderData.recordId = recordId;
-      }
       
-      console.log('Datos preparados para enviar:', workOrderData);
+      console.log('Datos preparados para enviar:', clientData);
 
       // Submit to API
-      console.log('Enviando datos a /api/work-orders...');
-      const response = await fetch('/api/work-orders', {
+      console.log('Enviando datos a /api/clientes...');
+      const response = await fetch('/api/clientes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(workOrderData),
+        body: JSON.stringify(clientData),
       });
 
       console.log('Respuesta recibida:', response.status, response.statusText);
@@ -208,17 +127,17 @@ export default function WorkOrderPage() {
         try {
           const err = await response.json();
           console.error('Error de la API:', err);
-          showToast(typeof err?.error === 'string' ? err.error : 'No se pudo crear la parte de trabajo', 'error');
+          showToast(typeof err?.error === 'string' ? err.error : 'No se pudo crear el cliente', 'error');
         } catch (parseError) {
           console.error('Error al parsear respuesta de error:', parseError);
-          showToast('No se pudo crear la parte de trabajo', 'error');
+          showToast('No se pudo crear el cliente', 'error');
         }
         return;
       }
 
-      console.log('Parte de trabajo creado exitosamente');
+      console.log('Cliente creado exitosamente');
       setIsCompleted(true);
-      showToast('¡Parte de trabajo enviado exitosamente!', 'success');
+      showToast('¡Datos de onboarding enviados exitosamente!', 'success');
     } catch (error: any) {
       console.error('Error completo:', error);
       showToast(typeof error?.message === 'string' ? error.message : 'Error al enviar los datos. Inténtalo de nuevo.', 'error');
@@ -231,15 +150,15 @@ export default function WorkOrderPage() {
     reset();
     setCurrentStep(1);
     setIsCompleted(false);
-    setPhotoFiles([]);
-    setInvoiceFiles([]);
+    setLogoFiles([]);
+    setCatalogFiles([]);
     window.location.href = '/';
   };
 
   if (isCompleted) {
     return (
       <>
-        <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-t from-[#0059F1] to-black flex items-center justify-center p-4">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -267,14 +186,14 @@ export default function WorkOrderPage() {
               transition={{ delay: 0.4 }}
               className="text-gray-600 mb-6"
             >
-              Hemos recibido tu parte de trabajo exitosamente.
+              Hemos recibido tus datos de onboarding exitosamente.
             </motion.p>
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
               onClick={handleBackToHome}
-              className="bg-[#008606] hover:bg-[#008606]/90 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="bg-[#0059F1] hover:bg-[#0059F1]/90 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               Volver al Inicio
             </motion.button>
@@ -287,7 +206,7 @@ export default function WorkOrderPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gradient-to-t from-[#0059F1] to-black">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             {/* Header */}
@@ -305,8 +224,8 @@ export default function WorkOrderPage() {
                   className="h-12 w-auto"
                 />
               </div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">Parte de Trabajo</h1>
-              <p className="text-gray-600">Completa la información del servicio técnico</p>
+              <h1 className="text-3xl font-bold text-white mb-2">Onboarding de Cliente</h1>
+              <p className="text-gray-300">Completa la información para comenzar</p>
             </motion.div>
 
             {/* Progress Steps */}
@@ -321,14 +240,14 @@ export default function WorkOrderPage() {
                   <div key={step.id} className="flex flex-col items-center">
                     <motion.div
                       animate={{
-                        backgroundColor: currentStep >= step.id ? '#008606' : '#374151',
+                        backgroundColor: currentStep >= step.id ? '#0059F1' : '#374151',
                         scale: currentStep === step.id ? 1.1 : 1,
                       }}
                       className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold mb-2 shadow-lg"
                     >
                       <step.icon className="w-5 h-5" />
                     </motion.div>
-                    <span className="text-xs text-gray-600 text-center max-w-20">
+                    <span className="text-xs text-gray-300 text-center max-w-20">
                       {step.title}
                     </span>
                   </div>
@@ -341,7 +260,7 @@ export default function WorkOrderPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100"
+              className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20"
             >
               <form onSubmit={handleSubmit(onSubmit)}>
                 <AnimatePresence mode="wait">
@@ -356,99 +275,108 @@ export default function WorkOrderPage() {
                     >
                       <h2 className="text-2xl font-bold text-gray-900 mb-6">Datos Generales</h2>
                       
-                      {isLoadingData ? (
-                        <div className="space-y-6">
-                          <div className="animate-pulse">
-                            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                            <div className="h-12 bg-gray-200 rounded-xl"></div>
-                          </div>
-                          <div className="animate-pulse">
-                            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                            <div className="h-12 bg-gray-200 rounded-xl"></div>
-                          </div>
-                          <div className="animate-pulse">
-                            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-                            <div className="h-12 bg-gray-200 rounded-xl"></div>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Cliente *
-                            </label>
-                            <input
-                              {...register('Cliente')}
-                              readOnly={!!recordId}
-                              className={cn(
-                                "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                                !!recordId && "bg-gray-50 cursor-not-allowed",
-                                errors.Cliente 
-                                  ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                                  : "border-gray-300 focus:ring-green-200 focus:border-green-400"
-                              )}
-                              placeholder="Nombre del cliente"
-                            />
-                            {errors.Cliente && (
-                              <p className="text-red-600 text-sm mt-1">{errors.Cliente.message}</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Dirección *
-                            </label>
-                            <input
-                              {...register('Dirección')}
-                              readOnly={!!recordId}
-                              className={cn(
-                                "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                                !!recordId && "bg-gray-50 cursor-not-allowed",
-                                errors.Dirección 
-                                  ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                                  : "border-gray-300 focus:ring-green-200 focus:border-green-400"
-                              )}
-                              placeholder="Dirección completa del cliente"
-                            />
-                            {errors.Dirección && (
-                              <p className="text-red-600 text-sm mt-1">{errors.Dirección.message}</p>
-                            )}
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Técnico *
-                            </label>
-                            <input
-                              {...register('Técnico')}
-                              readOnly={!!recordId}
-                              className={cn(
-                                "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                                !!recordId && "bg-gray-50 cursor-not-allowed",
-                                errors.Técnico 
-                                  ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                                  : "border-gray-300 focus:ring-green-200 focus:border-green-400"
-                              )}
-                              placeholder="Nombre del técnico"
-                            />
-                            {errors.Técnico && (
-                              <p className="text-red-600 text-sm mt-1">{errors.Técnico.message}</p>
-                            )}
-                          </div>
-
-                          {recordId && reparacionData && (
-                            <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl">
-                              <p className="text-sm text-green-700">
-                                <strong>Información cargada desde Airtable:</strong> Los datos generales se han cargado automáticamente del registro de reparación {recordId.substring(0, 8)}...
-                              </p>
-                            </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Nombre de la clínica *
+                        </label>
+                        <input
+                          {...register('Nombre de la clínica')}
+                          className={cn(
+                            "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                            errors['Nombre de la clínica'] 
+                              ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
                           )}
-                        </>
-                      )}
+                          placeholder="Ingresa el nombre de la clínica"
+                        />
+                        {errors['Nombre de la clínica'] && (
+                          <p className="text-red-600 text-sm mt-1">{errors['Nombre de la clínica']?.message}</p>
+                        )}
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Email *
+                          </label>
+                          <input
+                            type="email"
+                            {...register('Email')}
+                            className={cn(
+                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                              errors.Email 
+                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                                : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                            )}
+                            placeholder="correo@ejemplo.com"
+                          />
+                          {errors.Email && (
+                            <p className="text-red-600 text-sm mt-1">{errors.Email.message}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Teléfono *
+                          </label>
+                          <input
+                            {...register('Teléfono')}
+                            className={cn(
+                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                              errors.Teléfono 
+                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                                : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                            )}
+                            placeholder="+1 234 567 8900"
+                          />
+                          {errors.Teléfono && (
+                            <p className="text-red-600 text-sm mt-1">{errors.Teléfono.message}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Dirección *
+                        </label>
+                        <input
+                          {...register('Dirección')}
+                          className={cn(
+                            "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                            errors.Dirección 
+                              ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                          )}
+                          placeholder="Calle, Ciudad, País"
+                        />
+                        {errors.Dirección && (
+                          <p className="text-red-600 text-sm mt-1">{errors.Dirección.message}</p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Horario de atención *
+                        </label>
+                        <textarea
+                          {...register('Horario de atención')}
+                          rows={3}
+                          className={cn(
+                            "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                            errors['Horario de atención'] 
+                              ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                          )}
+                          placeholder="Ej: Lunes a Viernes 9:00 - 18:00"
+                        />
+                        {errors['Horario de atención'] && (
+                          <p className="text-red-600 text-sm mt-1">{errors['Horario de atención']?.message}</p>
+                        )}
+                      </div>
                     </motion.div>
                   )}
 
-                  {/* Step 2: Reparación */}
+                  {/* Step 2: Presencia Digital */}
                   {currentStep === 2 && (
                     <motion.div
                       key="step2"
@@ -457,109 +385,138 @@ export default function WorkOrderPage() {
                       exit={{ opacity: 0, x: -50 }}
                       className="space-y-6"
                     >
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Reparación</h2>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Presencia Digital</h2>
                       
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ¿Tienen más de una sede? *
+                          </label>
+                          <select
+                            {...register('¿Tienen más de una sede?')}
+                            className={cn(
+                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                              errors['¿Tienen más de una sede?'] 
+                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                                : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                            )}
+                          >
+                            <option value="">Seleccionar...</option>
+                            <option value="Sí">Sí</option>
+                            <option value="No">No</option>
+                          </select>
+                          {errors['¿Tienen más de una sede?'] && (
+                            <p className="text-red-600 text-sm mt-1">{errors['¿Tienen más de una sede?']?.message}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            ¿Tienen ficha en Google Business? *
+                          </label>
+                          <select
+                            {...register('¿Tienen ficha en Google Business?')}
+                            className={cn(
+                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                              errors['¿Tienen ficha en Google Business?'] 
+                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                                : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                            )}
+                          >
+                            <option value="">Seleccionar...</option>
+                            <option value="Sí">Sí</option>
+                            <option value="No">No</option>
+                          </select>
+                          {errors['¿Tienen ficha en Google Business?'] && (
+                            <p className="text-red-600 text-sm mt-1">{errors['¿Tienen ficha en Google Business?']?.message}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {watch('¿Tienen ficha en Google Business?') === 'Sí' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Enlace a ficha de Google Business *
+                          </label>
+                          <input
+                            type="url"
+                            {...register('Enlace a ficha de Google Business')}
+                            className={cn(
+                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                              errors['Enlace a ficha de Google Business'] 
+                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                                : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                            )}
+                            placeholder="https://business.google.com/..."
+                          />
+                          {errors['Enlace a ficha de Google Business'] && (
+                            <p className="text-red-600 text-sm mt-1">{errors['Enlace a ficha de Google Business']?.message}</p>
+                          )}
+                        </div>
+                      )}
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          ¿Has conseguido solucionar el problema? *
+                          Enlace a su web *
                         </label>
-                        <select
-                          {...register('¿Has conseguido solucionar el problema?')}
+                        <input
+                          type="url"
+                          {...register('Enlace a su web')}
                           className={cn(
                             "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                            errors['¿Has conseguido solucionar el problema?'] 
+                            errors['Enlace a su web'] 
                               ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                              : "border-gray-300 focus:ring-green-200 focus:border-green-400"
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
                           )}
-                        >
-                          <option value="">Seleccionar...</option>
-                          <option value="Reparado">Reparado</option>
-                          <option value="Sin reparar">Sin reparar</option>
-                        </select>
-                        {errors['¿Has conseguido solucionar el problema?'] && (
-                          <p className="text-red-600 text-sm mt-1">{errors['¿Has conseguido solucionar el problema?']?.message}</p>
+                          placeholder="https://www.ejemplo.com"
+                        />
+                        {errors['Enlace a su web'] && (
+                          <p className="text-red-600 text-sm mt-1">{errors['Enlace a su web']?.message}</p>
                         )}
                       </div>
 
-                      {watch('¿Has conseguido solucionar el problema?') === 'Reparado' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            ¿Qué has tenido que hacer? *
-                          </label>
-                          <select
-                            {...register('¿Qué has tenido que hacer?')}
-                            className={cn(
-                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                              errors['¿Qué has tenido que hacer?'] 
-                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                                : "border-gray-300 focus:ring-green-200 focus:border-green-400"
-                            )}
-                          >
-                            <option value="">Seleccionar...</option>
-                            <option value="Repara el cuadro eléctrico">Repara el cuadro eléctrico</option>
-                            <option value="Resetear la placa electrónica">Resetear la placa electrónica</option>
-                            <option value="Sustituir el punto de recarga">Sustituir el punto de recarga</option>
-                            <option value="Revisar la instalación">Revisar la instalación</option>
-                          </select>
-                          {errors['¿Qué has tenido que hacer?'] && (
-                            <p className="text-red-600 text-sm mt-1">{errors['¿Qué has tenido que hacer?']?.message}</p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          ¿Qué calendario usan? *
+                        </label>
+                        <input
+                          {...register('¿Qué calendario usan?')}
+                          className={cn(
+                            "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                            errors['¿Qué calendario usan?'] 
+                              ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
                           )}
-                        </div>
-                      )}
+                          placeholder="Ej: Google Calendar, Outlook, agenda física, software específico..."
+                        />
+                        {errors['¿Qué calendario usan?'] && (
+                          <p className="text-red-600 text-sm mt-1">{errors['¿Qué calendario usan?']?.message}</p>
+                        )}
+                      </div>
 
-                      {watch('¿Qué has tenido que hacer?') === 'Repara el cuadro eléctrico' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            ¿Qué has tenido que reparar del cuadro eléctrico? *
-                          </label>
-                          <select
-                            {...register('¿Qué has tenido que reparar del cuadro eléctrico?')}
-                            className={cn(
-                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                              errors['¿Qué has tenido que reparar del cuadro eléctrico?'] 
-                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                                : "border-gray-300 focus:ring-green-200 focus:border-green-400"
-                            )}
-                          >
-                            <option value="">Seleccionar...</option>
-                            <option value="Diferencial">Diferencial</option>
-                            <option value="Sobretensiones">Sobretensiones</option>
-                            <option value="Magneto termico">Magneto termico</option>
-                            <option value="Cableado interno">Cableado interno</option>
-                            <option value="Gestor dinámico de pontecia">Gestor dinámico de pontecia</option>
-                            <option value="Medidor de consumo">Medidor de consumo</option>
-                          </select>
-                          {errors['¿Qué has tenido que reparar del cuadro eléctrico?'] && (
-                            <p className="text-red-600 text-sm mt-1">{errors['¿Qué has tenido que reparar del cuadro eléctrico?']?.message}</p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          ¿Cuántos calendario tienen? *
+                        </label>
+                        <textarea
+                          {...register('¿Cuántos calendario tienen?')}
+                          rows={4}
+                          className={cn(
+                            "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                            errors['¿Cuántos calendario tienen?'] 
+                              ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
                           )}
-                        </div>
-                      )}
-
-                      {watch('¿Has conseguido solucionar el problema?') === 'Sin reparar' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            ¿Qué problema has tenido? *
-                          </label>
-                          <textarea
-                            {...register('¿Qué problema has tenido?')}
-                            rows={4}
-                            className={cn(
-                              "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                              errors['¿Qué problema has tenido?'] 
-                                ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                                : "border-gray-300 focus:ring-green-200 focus:border-green-400"
-                            )}
-                            placeholder="Describe detalladamente el problema que has encontrado..."
-                          />
-                          {errors['¿Qué problema has tenido?'] && (
-                            <p className="text-red-600 text-sm mt-1">{errors['¿Qué problema has tenido?']?.message}</p>
-                          )}
-                        </div>
-                      )}
+                          placeholder="Ej: 3 calendarios - uno para María Juárez odontóloga, otro para blanqueamiento con la dentista Juana López, y uno para cirugía con el Dr. Rodríguez. Cada uno maneja sus propios horarios y disponibilidad..."
+                        />
+                        {errors['¿Cuántos calendario tienen?'] && (
+                          <p className="text-red-600 text-sm mt-1">{errors['¿Cuántos calendario tienen?']?.message}</p>
+                        )}
+                      </div>
                     </motion.div>
                   )}
 
-                  {/* Step 3: Documentación */}
+                  {/* Step 3: Archivos */}
                   {currentStep === 3 && (
                     <motion.div
                       key="step3"
@@ -568,23 +525,23 @@ export default function WorkOrderPage() {
                       exit={{ opacity: 0, x: -50 }}
                       className="space-y-6"
                     >
-                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Documentación</h2>
+                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Archivos</h2>
                       
-                      <CameraCapture
-                        label="Foto del punto de recarga ya reparado"
+                      <FileUpload
+                        label="Logo"
                         required
-                        onFileSelect={setPhotoFiles}
+                        onFileSelect={setLogoFiles}
                         accept={{
-                          'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
+                          'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.svg'],
                         }}
                         maxFiles={1}
-                        maxSize={10 * 1024 * 1024}
+                        maxSize={5 * 1024 * 1024}
                       />
 
-                      <CameraCapture
-                        label="Adjunta la factura del servicio"
+                      <FileUpload
+                        label="Catálogo"
                         required
-                        onFileSelect={setInvoiceFiles}
+                        onFileSelect={setCatalogFiles}
                         accept={{
                           'application/pdf': ['.pdf'],
                           'image/*': ['.png', '.jpg', '.jpeg'],
@@ -595,7 +552,41 @@ export default function WorkOrderPage() {
                     </motion.div>
                   )}
 
-
+                  {/* Step 4: Seguridad */}
+                  {currentStep === 4 && (
+                    <motion.div
+                      key="step4"
+                      initial={{ opacity: 0, x: 50 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -50 }}
+                      className="space-y-6"
+                    >
+                      <h2 className="text-2xl font-bold text-gray-900 mb-6">Escribe tu contraseña para el portal del cliente</h2>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Contraseña *
+                        </label>
+                        <input
+                          type="password"
+                          {...register('Password')}
+                          className={cn(
+                            "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                            errors.Password 
+                              ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                              : "border-gray-300 focus:ring-blue-200 focus:border-blue-400"
+                          )}
+                          placeholder="Ingresa tu contraseña"
+                        />
+                        {errors.Password && (
+                          <p className="text-red-600 text-sm mt-1">{errors.Password.message}</p>
+                        )}
+                        <p className="text-gray-500 text-sm mt-1">
+                          Esta contraseña será usada para acceder al portal del cliente.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
                 </AnimatePresence>
 
                 {/* Navigation Buttons */}
@@ -615,12 +606,12 @@ export default function WorkOrderPage() {
                     Atrás
                   </button>
 
-          {currentStep < 3 ? (
+          {currentStep < 4 ? (
                     <button
                       type="button"
                       onClick={nextStep}
             disabled={isSubmitting}
-                      className="flex items-center gap-2 bg-[#008606] hover:bg-[#008606]/90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                      className="flex items-center gap-2 bg-[#0059F1] hover:bg-[#0059F1]/90 text-white font-semibold px-6 py-3 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
                     >
                       Avanzar
                       <ChevronRight className="w-4 h-4" />

@@ -1,222 +1,184 @@
-# Aplicación de Reservas Minimalista
+# 📋 Formulario Ritest - Parte de Trabajo
 
-Una aplicación web moderna para agendar reuniones de descubrimiento de 30 minutos, construida con Next.js, TypeScript, Tailwind CSS y conectada a Airtable.
+Una aplicación web moderna para gestión de partes de trabajo técnico integrada con Airtable, desarrollada con Next.js 14 y TypeScript.
 
-## Características Principales
+## 🚀 Características Principales
 
-- **Interfaz intuitiva**: Diseño responsivo de dos columnas con flujo de 3 pasos
-- **Calendario interactivo**: Selección fácil de fechas con navegación mensual
-- **Gestión inteligente de horarios**: Slots automáticos L-V, 9:00-17:00, cada 30 min
-- **Prevención de conflictos**: Verificación en tiempo real de disponibilidad
-- **Manejo de zonas horarias**: Visualización local, almacenamiento en UTC
-- **Validación completa**: Formularios con validación en tiempo real
-- **Integración Airtable**: Almacenamiento seguro de reservas
+### 📱 **Formulario Inteligente**
+- **Datos Precargados**: Los datos del cliente se cargan automáticamente desde Airtable
+- **Lógica Condicional**: Preguntas dinámicas según el tipo de reparación
+- **Validación en Tiempo Real**: Feedback inmediato con validaciones robustas
+- **Responsive Design**: Optimizado para móviles y tablets
 
-## Configuración del Proyecto
+### 🔧 **Integración con Airtable**
+- **Base ID**: `appX3CBiSmPy4119D`
+- **Tabla**: "Reparaciones"
+- **URLs Únicas**: Cada registro genera su enlace personalizado
+- **Sincronización Bidireccional**: Lee y actualiza datos automáticamente
 
-### 1. Variables de Entorno
+### 📸 **Documentación Fotográfica**
+- **Cámara Directa**: Toma fotos sin apps adicionales
+- **Subida de Archivos**: Compatible con archivos existentes
+- **Compresión**: Optimización automática de imágenes
 
-Crea un archivo `.env.local` en la raíz del proyecto:
+## 🏗️ Estructura del Formulario
 
-```env
-# Configuración de Airtable
-AIRTABLE_TOKEN=tu_token_de_airtable
-AIRTABLE_BASE_ID=tu_base_id
-AIRTABLE_TABLE_NAME=Bookings
-AIRTABLE_TABLE_CLIENTES=Clientes
+### **1. Datos Generales** (Precargados desde Airtable)
+- **Cliente**: Información del cliente (solo lectura)
+- **Dirección**: Ubicación del servicio (solo lectura) 
+- **Técnico**: Técnico asignado (solo lectura)
 
-# UploadThing (para subida de archivos)
-UPLOADTHING_SECRET=tu_uploadthing_secret
-UPLOADTHING_APP_ID=tu_uploadthing_app_id
-```
+### **2. Reparación** (Lógica Condicional)
+- **Estado**: "Reparado" o "Sin reparar"
+- **Si Reparado**: Opciones de trabajo realizado
+  - Repara el cuadro eléctrico (con sub-opciones)
+  - Resetear la placa electrónica
+  - Sustituir el punto de recarga
+  - Revisar la instalación
+- **Si Sin Reparar**: Campo libre para describir el problema
 
-### 2. Configuración de Airtable
+### **3. Documentación**
+- **Foto del Punto**: Imagen del resultado final
+- **Factura**: Documentación del servicio
 
-#### Crear una Base en Airtable:
-1. Ve a [Airtable](https://airtable.com) y crea una nueva base
-2. Crea dos tablas: "Bookings" y "Clientes"
+## 🛠️ Tecnologías Utilizadas
 
-#### Tabla "Bookings":
-Configura las siguientes columnas:
-   - `name` (Single line text)
-   - `email` (Email)
-   - `date_time` (Date with time, formato ISO)
+- **Framework**: Next.js 14 (App Router)
+- **Lenguaje**: TypeScript
+- **Estilos**: Tailwind CSS
+- **Validación**: Zod
+- **Formularios**: React Hook Form
+- **Base de Datos**: Airtable
+- **UI Components**: Componentes personalizados
+- **Iconos**: Lucide React
 
-#### Tabla "Clientes":
-Configura las siguientes columnas (nombres exactos):
-   - `Nombre de la clínica` (Single line text)
-   - `Email` (Email)
-   - `Teléfono` (Phone number)
-   - `Dirección` (Long text)
-   - `Horario de atención` (Long text)
-   - `¿Tienen más de una sede?` (Single select: Sí, No)
-   - `¿Tienen ficha en Google Business?` (Single select: Sí, No)
-   - `Enlace a ficha de Google Business` (URL)
-   - `Enlace a su web` (URL)
-   - `¿Cómo gestionan su agenda actualmente?` (Single line text)
-   - `Logo` (Attachment)
-   - `Catálogo` (Attachment)
-   - `Password` (Single line text)
+## ⚡ Instalación y Configuración
 
-#### Obtener Token de API:
-1. Ve a [Airtable Developer Hub](https://airtable.com/developers/web/api/introduction)
-2. Crea un nuevo Personal Access Token
-3. Asigna permisos de lectura y escritura para tu base
-
-#### Encontrar Base ID:
-1. Abre tu base en Airtable
-2. Ve a Help > API documentation
-3. El Base ID aparece en la URL y en la documentación
-
-### 3. Instalación y Ejecución
-
+### **1. Clonar el Repositorio**
 ```bash
-# Instalar dependencias
+git clone https://github.com/eliok7/formulario-ritest.git
+cd formulario-ritest
+```
+
+### **2. Instalar Dependencias**
+```bash
 npm install
+```
 
-# Ejecutar servidor de desarrollo
+### **3. Configurar Variables de Entorno**
+Crear archivo `.env.local`:
+```bash
+AIRTABLE_ACCESS_TOKEN=tu_token_aquí
+AIRTABLE_BASE_ID=appX3CBiSmPy4119D
+AIRTABLE_TABLE_NAME=Reparaciones
+```
+
+### **4. Configurar Airtable**
+
+#### **Columnas Requeridas en la Tabla "Reparaciones":**
+| Columna | Tipo | Configuración |
+|---------|------|---------------|
+| Cliente | Single line text | - |
+| Dirección | Long text | - |
+| Técnico | Single line text | - |
+| Reparación | Formula | `"https://tu-dominio.com/onboarding?recordId=" & RECORD_ID()` |
+| Estado | Single select | Opciones: Pendiente, Completado |
+
+### **5. Ejecutar en Desarrollo**
+```bash
 npm run dev
-
-# Construir para producción
-npm run build
-
-# Iniciar servidor de producción
-npm start
 ```
 
-## Estructura del Proyecto
+## 🔗 URLs y Navegación
+
+### **Rutas Principales**
+- `/onboarding` - Formulario principal
+- `/onboarding?recordId=recXXX` - Formulario con datos precargados
+- `/generate-url` - Generador de URLs para técnicos
+- `/test-airtable` - Página de pruebas de conexión
+
+### **Flujo de Trabajo**
+1. **Administrador**: Crea registros en Airtable
+2. **Sistema**: Genera URLs automáticamente con la fórmula
+3. **Envío**: Se comparte el enlace al técnico (WhatsApp/Email)
+4. **Técnico**: Accede con datos precargados
+5. **Completar**: Solo llena reparación + documentación
+6. **Sincronización**: Los datos se actualizan automáticamente en Airtable
+
+## 📦 Estructura del Proyecto
 
 ```
+formulario-ritest/
 ├── app/
-│   ├── api/bookings/route.ts    # API endpoint para reservas
-│   ├── api/clientes/route.ts    # API endpoint para clientes
-│   ├── onboarding/page.tsx      # Página de onboarding
-│   ├── globals.css              # Estilos globales
-│   ├── layout.tsx              # Layout principal
-│   └── page.tsx                # Página principal
-├── components/
-│   ├── ui/toast.tsx            # Sistema de notificaciones
-│   ├── ui/file-upload.tsx      # Componente de subida de archivos
-│   ├── Calendar.tsx            # Calendario interactivo
-│   ├── TimeSlots.tsx           # Selector de horarios
-│   └── BookingForm.tsx         # Formulario de reserva
-├── hooks/
-│   └── use-toast.tsx           # Hook para notificaciones
+│   ├── api/
+│   │   ├── reparaciones/
+│   │   ├── work-orders/
+│   │   └── test-airtable/
+│   ├── onboarding/
+│   ├── generate-url/
+│   └── components/
 ├── lib/
-│   ├── airtable.ts             # Cliente de Airtable
-│   ├── validations.ts          # Esquemas de validación Zod
-│   ├── upload.ts               # Utilidades de subida de archivos
-│   ├── time-utils.ts           # Utilidades de fecha/hora
-│   └── utils.ts                # Utilidades generales
-└── README.md
+│   ├── airtable.ts
+│   ├── validations.ts
+│   └── utils.ts
+├── components/
+│   ├── ui/
+│   └── CameraCapture.tsx
+└── public/
 ```
 
-## API Endpoints
+## 🚀 Deployment
 
-### POST /api/bookings
-
-Crea una nueva reserva después de verificar disponibilidad.
-
-**Request Body:**
-```json
-{
-  "name": "Juan Pérez",
-  "email": "juan@ejemplo.com",
-  "date_time": "2024-01-15T10:00:00.000Z"
-}
+### **Vercel (Recomendado)**
+```bash
+npm run build
+vercel --prod
 ```
 
-**Response exitoso (201):**
-```json
-{
-  "id": "rec123456789"
-}
-```
+### **Variables de Entorno en Producción**
+Configurar en el panel de Vercel:
+- `AIRTABLE_ACCESS_TOKEN`
+- `AIRTABLE_BASE_ID` 
+- `AIRTABLE_TABLE_NAME`
 
-**Response error - Slot ocupado (409):**
-```json
-{
-  "error": "Time slot is already booked"
-}
-```
+## 🔧 Uso y Configuración
 
-## Funcionalidades Técnicas
+### **Para Administradores**
+1. Crear registros en Airtable con Cliente, Dirección y Técnico
+2. La columna "Reparación" generará automáticamente las URLs
+3. Enviar enlaces a los técnicos
 
-### Páginas Disponibles
-- `/` - Página principal de reservas (Discovery Meeting)
-- `/onboarding` - Formulario multi-paso para registro de clientes
+### **Para Técnicos**
+1. Recibir enlace personalizado
+2. Acceder al formulario con datos precargados
+3. Completar información de reparación
+4. Subir fotos de documentación
+5. Enviar formulario
 
-### Gestión de Zonas Horarias
-- Detección automática de zona horaria del usuario
-- Visualización en horario local
-- Almacenamiento en UTC para consistencia global
+## 📱 Características Móviles
 
-### Prevención de Conflictos
-- Verificación en tiempo real antes de cada reserva
-- Uso de `filterByFormula` de Airtable para búsquedas precisas
-- Manejo de errores 409 para slots ya ocupados
+- **Diseño Responsive**: Adaptado para pantallas móviles
+- **Cámara Nativa**: Acceso directo a la cámara del dispositivo
+- **Navegación Táctil**: Optimizada para uso con dedos
+- **Validación Visual**: Feedback claro y visible
+- **Carga Progresiva**: Indicadores de estado en tiempo real
 
-### Rate Limiting
-- Reintentos automáticos en errores 429 de Airtable
-- Backoff exponencial para optimizar rendimiento
-- Manejo robusto de errores de red
+## 🎨 Personalización
 
-### Validación
-- Validación de email con regex
-- Validación de URLs para enlaces web
-- Validación de archivos (tamaño y tipo)
-- Campos obligatorios verificados en frontend y backend
-- Sanitización de datos antes del almacenamiento
+### **Colores del Brand**
+- **Principal**: `#008606` (Verde Ritest)
+- **Fondo**: Blanco limpio
+- **Textos**: Grises para mejor legibilidad
 
-## Tecnologías Utilizadas
+### **Modificar Campos**
+Los campos se pueden personalizar editando:
+- `lib/validations.ts` - Esquemas de validación
+- `app/onboarding/page.tsx` - Estructura del formulario
 
-- **Next.js 13+**: Framework React con App Router
-- **TypeScript**: Tipado estático para mayor robustez
-- **Tailwind CSS**: Framework CSS utilitario
-- **Framer Motion**: Animaciones y transiciones suaves
-- **React Hook Form**: Manejo de formularios con validación
-- **Zod**: Validación de esquemas TypeScript-first
-- **React Dropzone**: Componente de drag-and-drop para archivos
-- **Airtable API**: Base de datos cloud con API REST
-- **date-fns**: Librería para manejo de fechas
-- **Lucide React**: Iconos SVG optimizados
+## 📞 Soporte y Contacto
 
-## Personalización
+Para soporte técnico o dudas sobre la implementación, contactar al desarrollador del proyecto.
 
-### Configurar Subida de Archivos
-Para usar UploadThing en producción:
-1. Crea una cuenta en [UploadThing](https://uploadthing.com)
-2. Obtén tu `UPLOADTHING_SECRET` y `UPLOADTHING_APP_ID`
-3. Reemplaza la implementación mock en `lib/upload.ts` con la integración real
+---
 
-### Modificar Horarios de Disponibilidad
-Edita `lib/time-utils.ts` para cambiar:
-- Horas de inicio/fin (actualmente 9:00-17:00)
-- Duración de slots (actualmente 30 minutos)
-- Días laborables (actualmente L-V)
-
-### Cambiar Estilos
-Los estilos están basados en Tailwind CSS. Modifica las clases en los componentes o personaliza el tema en `tailwind.config.ts`.
-
-### Campos Adicionales
-Para agregar campos al formulario de onboarding:
-1. Actualiza el esquema en `lib/validations.ts`
-2. Modifica la interfaz en `app/onboarding/page.tsx`
-3. Ajusta la validación en `app/api/clientes/route.ts`
-4. Agrega las columnas correspondientes en la tabla "Clientes" de Airtable
-
-## Notas de Desarrollo
-
-- El proyecto usa exportación estática (`output: 'export'`) para máxima compatibilidad
-- Las imágenes están optimizadas para despliegue estático
-- ESLint configurado con reglas de Next.js
-- Componentes completamente tipados con TypeScript
-
-## Soporte
-
-Para problemas o preguntas técnicas, revisa:
-1. Las variables de entorno estén correctamente configuradas
-2. Las tablas "Bookings" y "Clientes" existan en Airtable con las columnas exactas
-3. Los permisos de Airtable incluyan lectura y escritura
-4. Los logs del servidor para errores específicos
-5. La configuración de UploadThing para subida de archivos
+**Desarrollado para Ritest** - Gestión eficiente de partes de trabajo técnico
