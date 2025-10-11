@@ -1,17 +1,18 @@
 // Opciones para el formulario de reparaciones
 
 export const serviciosOptions = [
-  'Reparación de pantalla',
-  'Cambio de batería',
-  'Reparación de carga',
-  'Reparación de audio',
-  'Reparación de cámara',
-  'Limpieza interna',
-  'Actualización de software',
-  'Diagnóstico general',
-  'Cambio de cristal',
-  'Reparación de placa base',
-  'Otros'
+  'Reparar el cuadro eléctrico',
+  'Resetear la placa electrónica',
+  'Sustituir el punto de recarga',
+  'Revisar la instalación'
+];
+
+export const cuadroElectricoOptions = [
+  'Sobretensiones',
+  'Diferencial',
+  'Magnetotérmico',
+  'Gestor de potencia',
+  'Cableado interno'
 ];
 
 export const tecnicosOptions = [

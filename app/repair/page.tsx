@@ -1,43 +1,15 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 import { RepairForm } from '@/components/RepairForm';
 import { Toast } from '@/components/ui/toast';
 import { useToast } from '@/hooks/useToastClient';
 import { motion } from 'framer-motion';
-import { Wrench, CheckCircle } from 'lucide-react';
-import Image from 'next/image';
+import { CheckCircle } from 'lucide-react';
 
 export default function RepairPage() {
-  const searchParams = useSearchParams();
   const { toast, showToast, hideToast } = useToast();
   const [isCompleted, setIsCompleted] = useState(false);
-  
-  // Get URL parameters for pre-filling
-  const [prefilledData, setPrefilledData] = useState({
-    tecnico: '',
-    cliente: '',
-    direccion: '',
-    record: ''
-  });
-
-  useEffect(() => {
-    // Read URL parameters
-    const urlParams = {
-      tecnico: searchParams.get('tecnico') || '',
-      cliente: searchParams.get('cliente') || '',
-      direccion: searchParams.get('direccion') || '',
-      record: searchParams.get('record') || ''
-    };
-    
-    setPrefilledData(urlParams);
-    
-    // Show info if data was pre-filled
-    if (urlParams.tecnico || urlParams.cliente || urlParams.direccion) {
-      showToast('Datos prellenados desde Airtable', 'success');
-    }
-  }, [searchParams, showToast]);
 
   const handleRepairComplete = () => {
     setIsCompleted(true);
@@ -108,43 +80,6 @@ export default function RepairPage() {
       <div className="min-h-screen bg-gradient-to-t from-[#008606] to-black">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-6xl mx-auto">
-            {/* Header */}
-            <motion.div 
-              initial={{ opacity: 0, y: -50 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white/95 backdrop-blur-sm rounded-3xl p-8 shadow-2xl border border-white/20 mb-8"
-            >
-              <div className="flex items-center mb-6">
-                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mr-4 p-2">
-                  <Image
-                    src="/favicon.png"
-                    alt="Favicon"
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-contain"
-                  />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                    <Wrench className="w-8 h-8 text-[#008606]" />
-                    Formulario de Reparación
-                  </h1>
-                  <p className="text-gray-600">Registra los detalles de la reparación realizada</p>
-                </div>
-              </div>
-              
-              {(prefilledData.tecnico || prefilledData.cliente || prefilledData.direccion) && (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-[#008606] rounded-lg p-4">
-                  <h3 className="font-semibold text-green-800 mb-2">Datos prellenados:</h3>
-                  <div className="text-sm text-green-700 space-y-1">
-                    {prefilledData.tecnico && <p><strong>Técnico:</strong> {prefilledData.tecnico}</p>}
-                    {prefilledData.cliente && <p><strong>Cliente:</strong> {prefilledData.cliente}</p>}
-                    {prefilledData.direccion && <p><strong>Dirección:</strong> {prefilledData.direccion}</p>}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-
             {/* Repair Form */}
             <motion.div
               initial={{ opacity: 0, y: 50 }}
@@ -154,7 +89,6 @@ export default function RepairPage() {
               <RepairForm
                 onRepairComplete={handleRepairComplete}
                 onRepairError={handleRepairError}
-                prefilledData={prefilledData}
               />
             </motion.div>
           </div>

@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
     console.log('📥 Request body:', JSON.stringify(body, null, 2));
     
     // Validation - only require essential fields
-    if (!body.Problema || !body["Fecha visita"] || !body.Servicios || body.Servicios.length === 0) {
+    if (!body.Reparación || !body.Cliente || !body.Técnico) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: Servicios, Problema y Fecha de visita son obligatorios' },
+        { error: 'Faltan campos requeridos: Reparación, Cliente y Técnico son obligatorios' },
         { status: 400 }
       );
     }

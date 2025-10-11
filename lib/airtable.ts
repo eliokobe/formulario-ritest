@@ -197,5 +197,5 @@ export async function createClient(clientData: any): Promise<{ id: string }> {
 
 // Specific function for creating repairs
 export async function createRepair(repairData: any): Promise<{ id: string }> {
-  return createRecord(AIRTABLE_TABLE_NAME!, repairData);
+  return createRecord('Reparaciones', repairData);
 }
