@@ -8,25 +8,18 @@ import { uploadFiles } from '@/lib/upload';
 import { 
   Loader2, 
   User, 
-  Calendar, 
-  DollarSign, 
-  CheckCircle2, 
-  AlertCircle, 
   MapPin, 
   ChevronLeft, 
   ChevronRight, 
-  CheckCircle, 
-  Building2, 
-  Settings, 
-  FileImage 
+  CheckCircle
 } from 'lucide-react';
 import { serviciosOptions, cuadroElectricoOptions } from '@/lib/repair-options';
 import Image from 'next/image';
 
 const steps = [
-  { id: 1, title: 'Datos Generales', icon: Building2 },
-  { id: 2, title: 'Reparación', icon: Settings },
-  { id: 3, title: 'Documentación', icon: FileImage },
+  { id: 1, title: 'Datos Generales' },
+  { id: 2, title: 'Reparación' },
+  { id: 3, title: 'Documentación' },
 ];
 
 interface RepairFormProps {
@@ -182,12 +175,12 @@ export function RepairForm({
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto px-4 xs:px-6 sm:px-6 lg:px-8">
       {/* Logo, Header and Progress Steps Combined */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/20 mb-4 sm:mb-8"
+        className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 shadow-2xl border border-white/20 mb-4 sm:mb-8 landscape-compact"
       >
         {/* Logo and Header Section */}
         <div className="text-center mb-6 sm:mb-8">
@@ -209,28 +202,40 @@ export function RepairForm({
         </div>
 
         {/* Progress Steps Section */}
-        <div className="flex items-center justify-between max-w-md sm:max-w-xl mx-auto">
-          {steps.map((step) => (
-            <div key={step.id} className="flex flex-col items-center">
+        <div className="max-w-md mx-auto">
+          {/* Progress Bar */}
+          <div className="flex items-center mb-4">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
               <motion.div
                 animate={{
-                  backgroundColor: currentStep >= step.id ? '#008606' : '#374151',
-                  scale: currentStep === step.id ? 1.1 : 1,
+                  width: `${(currentStep / steps.length) * 100}%`
                 }}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-semibold mb-2 shadow-lg"
-              >
-                <step.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-              </motion.div>
-              <span className="text-xs sm:text-sm font-medium text-gray-900 text-center max-w-16 sm:max-w-20">
-                {step.title}
-              </span>
+                transition={{ duration: 0.3 }}
+                className="bg-[#008606] h-2 rounded-full"
+              />
             </div>
-          ))}
+            <span className="ml-3 text-sm font-medium text-gray-600">
+              {currentStep} de {steps.length}
+            </span>
+          </div>
+          
+          {/* Step Labels */}
+          <div className="text-center">
+            <motion.h3
+              key={currentStep}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="text-lg font-semibold text-gray-900"
+            >
+              {steps[currentStep - 1].title}
+            </motion.h3>
+          </div>
         </div>
       </motion.div>
 
       {/* Form Card */}
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/20">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 shadow-2xl border border-white/20 landscape-compact">
         <AnimatePresence mode="wait">
           {/* Step 1: Datos Generales */}
           {currentStep === 1 && (
@@ -241,8 +246,7 @@ export function RepairForm({
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-[#008606]" />
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Datos Generales
               </h2>
               
@@ -258,7 +262,7 @@ export function RepairForm({
                     value={formData.cliente}
                     onChange={(e) => handleInputChange('cliente', e.target.value)}
                     className={cn(
-                      "w-full pl-10 pr-4 py-4 text-base rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
+                      "w-full pl-10 pr-4 py-4 text-base rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2 touch-manipulation",
                       errors.cliente 
                         ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
                         : "border-gray-300 focus:ring-green-200 focus:border-green-400"
@@ -332,8 +336,7 @@ export function RepairForm({
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Settings className="w-6 h-6 text-[#008606]" />
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 ¿Qué has tenido que reparar?
               </h2>
 
@@ -418,8 +421,7 @@ export function RepairForm({
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <FileImage className="w-6 h-6 text-[#008606]" />
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Documentación
               </h2>
               

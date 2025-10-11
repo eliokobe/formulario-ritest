@@ -80,3 +80,54 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Mejoras para dispositivos móviles */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Evitar zoom en inputs en iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  textarea,
+  select {
+    font-size: 16px;
+  }
+  
+  /* Scrollbar personalizado para mejor UX */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+  
+  /* Mejoras para orientación landscape en móviles */
+  @media screen and (max-height: 500px) and (orientation: landscape) {
+    .landscape-compact {
+      padding-top: 1rem;
+      padding-bottom: 1rem;
+    }
+  }
+  
+  /* Mejoras para pantallas muy pequeñas */
+  @media screen and (max-width: 374px) {
+    .text-responsive {
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
+  }
+}

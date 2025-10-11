@@ -7,6 +7,12 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Contacto | Sonrisia',
   description: 'Agenda tu reunión de descubrimiento con Sonrisia',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  },
   icons: {
     icon: [{ url: '/favicon.png', type: 'image/png' }],
     shortcut: ['/favicon.png'],

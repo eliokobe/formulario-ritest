@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { FileUpload } from '@/components/ui/file-upload';
@@ -9,20 +9,16 @@ import {
   Loader2, 
   CheckCircle, 
   ChevronLeft, 
-  ChevronRight, 
-  Camera,
-  AlertTriangle,
-  Wrench,
-  MessageSquare
+  ChevronRight
 } from 'lucide-react';
 import Image from 'next/image';
 
 const steps = [
-  { id: 1, title: 'Foto General', icon: Camera },
-  { id: 2, title: 'Foto Etiqueta', icon: Camera },
-  { id: 3, title: 'Problema', icon: AlertTriangle },
-  { id: 4, title: 'Detalles', icon: MessageSquare },
-  { id: 5, title: 'Foto Roto', icon: Camera },
+  { id: 1, title: 'Foto General' },
+  { id: 2, title: 'Foto Etiqueta' },
+  { id: 3, title: 'Problema' },
+  { id: 4, title: 'Detalles' },
+  { id: 5, title: 'Foto Roto' },
 ];
 
 const problemOptions = [
@@ -48,10 +44,15 @@ interface TechnicalSupportFormProps {
 export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expediente, setExpediente] = useState<string>('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingData, setExistingData] = useState<any>(null);
   
   const [formData, setFormData] = useState({
     problema: '',
     detalles: '', // Siempre presente, no solo para "Otro"
+    cliente: '',
+    direccion: '',
   });
   
   const [files, setFiles] = useState({
@@ -61,6 +62,47 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Cargar datos del expediente si existe en la URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const expedienteParam = urlParams.get('expediente');
+    
+    if (expedienteParam) {
+      setExpediente(expedienteParam);
+      loadExpedienteData(expedienteParam);
+    }
+  }, []);
+
+  const loadExpedienteData = async (expedienteId: string) => {
+    try {
+      const response = await fetch(`/api/expediente?expediente=${expedienteId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setIsEditMode(true);
+        setExistingData(data);
+        
+        // Prellenar formulario con datos existentes
+        setFormData(prev => ({
+          ...prev,
+          problema: data.problema || '',
+          detalles: data.detalles || '',
+          cliente: data.cliente || '',
+          direccion: data.direccion || '',
+        }));
+
+        // Prellenar archivos existentes si los hay
+        // Nota: Los archivos de Airtable se mostrarían como links, no como File objects
+        // Para una implementación completa, necesitarías convertir URLs a File objects
+      } else if (response.status === 404) {
+        onError(`Expediente ${expedienteId} no encontrado`);
+      }
+    } catch (error) {
+      console.error('Error cargando expediente:', error);
+      onError('Error al cargar los datos del expediente');
+    }
+  };
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
@@ -146,24 +188,41 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
         "Foto general": fotoGeneralUploads,
         "Foto etiqueta": fotoEtiquetaUploads,
         "Problema": formData.problema,
-        "Otro": formData.detalles, // Siempre enviar los detalles
+        "Detalles": formData.detalles, // Mapear a la columna "Detalles"
         "Foto roto": physicalDamageOptions.includes(formData.problema) ? fotoRotoUploads : undefined,
         "Fecha Solicitud": new Date().toISOString(),
       };
 
-      // Aquí podrías hacer la llamada al API para guardar en Airtable
-      // const response = await fetch('/api/technical-support', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(supportData),
-      // });
+      // Decidir si crear nuevo registro o actualizar existente
+      if (isEditMode && expediente) {
+        // Actualizar expediente existente
+        const response = await fetch(`/api/expediente?expediente=${expediente}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(supportData),
+        });
 
-      console.log('Support data:', supportData);
+        if (!response.ok) {
+          throw new Error('Error al actualizar el expediente');
+        }
+
+        console.log('Expediente actualizado:', supportData);
+      } else {
+        // Crear nuevo registro (implementación futura si es necesario)
+        const response = await fetch('/api/technical-support', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(supportData),
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al crear la solicitud');
+        }
+
+        console.log('Nueva solicitud creada:', supportData);
+      }
       
-      // Simular éxito por ahora
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
+      onComplete();
 
     } catch (error: any) {
       const msg = typeof error?.message === 'string' ? error.message : 'Error al enviar la solicitud. Inténtalo de nuevo.';
@@ -201,12 +260,12 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto px-4 xs:px-6 sm:px-6 lg:px-8">
       {/* Logo and Header */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/20 mb-4 sm:mb-8"
+        className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 shadow-2xl border border-white/20 mb-4 sm:mb-8 landscape-compact"
       >
         {/* Logo and Header Section */}
         <div className="text-center mb-6 sm:mb-8">
@@ -220,36 +279,59 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
             />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Asistencia Técnica
+            {isEditMode ? `Expediente ${expediente}` : 'Asistencia Técnica'}
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
-            Te ayudamos a resolver el problema con tu punto de recarga
+            {isEditMode 
+              ? `Editando solicitud de ${existingData?.cliente || 'cliente'}`
+              : 'Te ayudamos a resolver el problema con tu punto de recarga'
+            }
           </p>
+          {isEditMode && existingData && (
+            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-800">
+                <strong>Cliente:</strong> {existingData.cliente}<br/>
+                <strong>Dirección:</strong> {existingData.direccion}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Progress Steps Section */}
-        <div className="flex items-center justify-between max-w-md sm:max-w-2xl mx-auto overflow-x-auto">
-          {steps.map((step) => (
-            <div key={step.id} className="flex flex-col items-center min-w-0 flex-shrink-0">
+        <div className="max-w-md mx-auto">
+          {/* Progress Bar */}
+          <div className="flex items-center mb-4">
+            <div className="flex-1 bg-gray-200 rounded-full h-2">
               <motion.div
                 animate={{
-                  backgroundColor: currentStep >= step.id ? '#008606' : '#374151',
-                  scale: currentStep === step.id ? 1.1 : 1,
+                  width: `${(currentStep / steps.length) * 100}%`
                 }}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-semibold mb-2 shadow-lg"
-              >
-                <step.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-              </motion.div>
-              <span className="text-xs font-medium text-gray-900 text-center max-w-14 sm:max-w-20 leading-tight">
-                {step.title}
-              </span>
+                transition={{ duration: 0.3 }}
+                className="bg-[#008606] h-2 rounded-full"
+              />
             </div>
-          ))}
+            <span className="ml-3 text-sm font-medium text-gray-600">
+              {currentStep} de {steps.length}
+            </span>
+          </div>
+          
+          {/* Step Labels */}
+          <div className="text-center">
+            <motion.h3
+              key={currentStep}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="text-lg font-semibold text-gray-900"
+            >
+              {steps[currentStep - 1].title}
+            </motion.h3>
+          </div>
         </div>
       </motion.div>
 
       {/* Form Card */}
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl border border-white/20">
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 shadow-2xl border border-white/20 landscape-compact">
         <AnimatePresence mode="wait">
           {/* Step 1: Foto General */}
           {currentStep === 1 && (
@@ -260,9 +342,8 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-start sm:items-center gap-2">
-                <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-[#008606] mt-1 sm:mt-0 flex-shrink-0" />
-                <span className="leading-relaxed">{getStepTitle()}</span>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 leading-relaxed">
+                {getStepTitle()}
               </h2>
               
               <FileUpload
@@ -289,9 +370,8 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-start sm:items-center gap-2">
-                <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-[#008606] mt-1 sm:mt-0 flex-shrink-0" />
-                <span className="leading-relaxed">{getStepTitle()}</span>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 leading-relaxed">
+                {getStepTitle()}
               </h2>
               
               <FileUpload
@@ -318,9 +398,8 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-start sm:items-center gap-2">
-                <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-[#008606] mt-1 sm:mt-0 flex-shrink-0" />
-                <span className="leading-relaxed">{getStepTitle()}</span>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 leading-relaxed">
+                {getStepTitle()}
               </h2>
 
               <div>
@@ -366,9 +445,8 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-start sm:items-center gap-2">
-                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 text-[#008606] mt-1 sm:mt-0 flex-shrink-0" />
-                <span className="leading-relaxed">{getStepTitle()}</span>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 leading-relaxed">
+                {getStepTitle()}
               </h2>
 
               <div>
@@ -409,9 +487,8 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
               exit={{ opacity: 0, x: -50 }}
               className="space-y-6"
             >
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 flex items-start sm:items-center gap-2">
-                <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-[#008606] mt-1 sm:mt-0 flex-shrink-0" />
-                <span className="leading-relaxed">{getStepTitle()}</span>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6 leading-relaxed">
+                {getStepTitle()}
               </h2>
 
               <div>
