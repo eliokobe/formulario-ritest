@@ -101,23 +101,46 @@ export async function listRecords(tableName: string, params?: Record<string, str
 }
 
 export async function updateRecord(tableName: string, id: string, fields: Record<string, any>): Promise<{ id: string }> {
+  console.log('🔧 updateRecord called with:');
+  console.log('  tableName:', tableName);
+  console.log('  recordId:', id);
+  console.log('  fields keys:', Object.keys(fields));
+  
   const payload = { fields };
+  console.log('📤 Payload size:', JSON.stringify(payload).length, 'characters');
 
   try {
-    const response = await makeRequest(`${getBaseUrl(tableName)}/${id}`, {
+    const url = `${getBaseUrl(tableName)}/${id}`;
+    console.log('📤 Request URL:', url);
+    console.log('📤 Making PATCH request to Airtable...');
+    
+    const response = await makeRequest(url, {
       method: 'PATCH',
       body: JSON.stringify(payload),
     });
 
     if (!response) {
+      console.error('❌ No response received from Airtable');
       throw new Error('No response received from Airtable');
     }
     
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+    
     const data: any = await response.json();
+    console.log('📥 Response data keys:', Object.keys(data));
+    
+    if (!data.id) {
+      console.error('❌ No ID in response data:', data);
+      throw new Error('No ID returned from Airtable update');
+    }
+    
+    console.log('✅ updateRecord successful, returned ID:', data.id);
     return { id: data.id };
-  } catch (error) {
-    console.error(`Error updating record in ${tableName}:`, error);
-    throw new Error(`Failed to update record in ${tableName}`);
+  } catch (error: any) {
+    console.error(`❌ updateRecord error in ${tableName}:`, error.name, error.message);
+    console.error('❌ Full error:', JSON.stringify(error, null, 2));
+    throw new Error(`Failed to update record in ${tableName}: ${error.message}`);
   }
 }
 
@@ -137,7 +160,19 @@ export async function findFormularioByExpediente(expediente: string): Promise<an
 }
 
 export async function updateFormulario(recordId: string, data: any): Promise<{ id: string }> {
-  return updateRecord(AIRTABLE_TABLE_FORMULARIO!, recordId, data);
+  console.log('🔧 updateFormulario called with recordId:', recordId);
+  console.log('🔧 updateFormulario table:', AIRTABLE_TABLE_FORMULARIO);
+  console.log('🔧 updateFormulario data keys:', Object.keys(data));
+  
+  try {
+    const result = await updateRecord(AIRTABLE_TABLE_FORMULARIO!, recordId, data);
+    console.log('✅ updateFormulario successful:', result.id);
+    return result;
+  } catch (error: any) {
+    console.error('❌ updateFormulario failed:', error.message);
+    console.error('❌ updateFormulario error details:', JSON.stringify(error, null, 2));
+    throw error;
+  }
 }
 
 export async function createFormulario(data: any): Promise<{ id: string }> {
@@ -184,4 +219,56 @@ export async function processFilesForAirtable(files: FileList | File[]): Promise
   }
   
   return attachments;
+}
+
+// Upload image to Airtable using the correct content endpoint
+export async function uploadImageToAirtable(recordId: string, fieldName: string, imageData: any): Promise<void> {
+  if (!AIRTABLE_TOKEN || !AIRTABLE_BASE_ID) {
+    throw new Error('Airtable configuration missing');
+  }
+
+  // Extract base64 data from the image object
+  let base64Data: string;
+  let filename: string;
+  
+  if (typeof imageData === 'string' && imageData.startsWith('data:image/')) {
+    // Direct base64 string
+    base64Data = imageData.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+    filename = 'image.jpg';
+  } else if (imageData && imageData.url && imageData.filename) {
+    // Object with url and filename
+    base64Data = imageData.url.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+    filename = imageData.filename;
+  } else {
+    throw new Error('Invalid image data format');
+  }
+
+  const uploadUrl = `https://content.airtable.com/v0/${AIRTABLE_BASE_ID}/${recordId}/${encodeURIComponent(fieldName)}/uploadAttachment`;
+  
+  const payload = JSON.stringify({
+    contentType: 'image/jpeg',
+    file: base64Data,
+    filename: filename,
+  });
+
+  console.log(`📤 Uploading to: ${uploadUrl}`);
+  console.log(`📤 Payload size: ${payload.length} characters`);
+  
+  const response = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: payload,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`❌ Upload failed: ${response.status} ${response.statusText}`);
+    console.error(`❌ Error details: ${errorText}`);
+    throw new Error(`Failed to upload image: ${response.status} ${response.statusText}`);
+  }
+
+  console.log(`✅ Successfully uploaded ${filename} to ${fieldName}`);
 }

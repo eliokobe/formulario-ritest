@@ -190,7 +190,6 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
         "Problema": formData.problema,
         "Detalles": formData.detalles, // Mapear a la columna "Detalles"
         "Foto roto": physicalDamageOptions.includes(formData.problema) ? fotoRotoUploads : undefined,
-        "Fecha Solicitud": new Date().toISOString(),
       };
 
       // Decidir si crear nuevo registro o actualizar existente
@@ -279,12 +278,12 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
             />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            {isEditMode ? `Expediente ${expediente}` : 'Asistencia Técnica'}
+            {isEditMode ? `Expediente ${expediente}` : 'Formulario de Incidencia'}
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
             {isEditMode 
               ? `Editando solicitud de ${existingData?.cliente || 'cliente'}`
-              : 'Te ayudamos a resolver el problema con tu punto de recarga'
+              : 'Completa este formulario en menos de un minuto para recibir asistencia inmediata'
             }
           </p>
           {isEditMode && existingData && (
@@ -346,18 +345,23 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
                 {getStepTitle()}
               </h2>
               
-              <FileUpload
-                label="Foto General del Punto de Recarga"
-                onFileSelect={(files) => setFiles(prev => ({ ...prev, fotoGeneral: files }))}
-                accept={{
-                  'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
-                }}
-                maxFiles={3}
-                maxSize={10 * 1024 * 1024}
-              />
-              {errors.fotoGeneral && (
-                <p className="text-red-600 text-sm mt-2">{errors.fotoGeneral}</p>
-              )}
+              <div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Toca aquí para tomar una foto o seleccionar una imagen de tu galería
+                </p>
+                <FileUpload
+                  label=""
+                  onFileSelect={(files) => setFiles(prev => ({ ...prev, fotoGeneral: files }))}
+                  accept={{
+                    'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
+                  }}
+                  maxFiles={1}
+                  maxSize={10 * 1024 * 1024}
+                />
+                {errors.fotoGeneral && (
+                  <p className="text-red-600 text-sm mt-2">{errors.fotoGeneral}</p>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -374,18 +378,23 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
                 {getStepTitle()}
               </h2>
               
-              <FileUpload
-                label="Foto de la Etiqueta del Punto de Recarga"
-                onFileSelect={(files) => setFiles(prev => ({ ...prev, fotoEtiqueta: files }))}
-                accept={{
-                  'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
-                }}
-                maxFiles={2}
-                maxSize={10 * 1024 * 1024}
-              />
-              {errors.fotoEtiqueta && (
-                <p className="text-red-600 text-sm mt-2">{errors.fotoEtiqueta}</p>
-              )}
+              <div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Busca la etiqueta con el número de serie y toma una foto clara
+                </p>
+                <FileUpload
+                  label=""
+                  onFileSelect={(files) => setFiles(prev => ({ ...prev, fotoEtiqueta: files }))}
+                  accept={{
+                    'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
+                  }}
+                  maxFiles={1}
+                  maxSize={10 * 1024 * 1024}
+                />
+                {errors.fotoEtiqueta && (
+                  <p className="text-red-600 text-sm mt-2">{errors.fotoEtiqueta}</p>
+                )}
+              </div>
             </motion.div>
           )}
 
@@ -492,13 +501,16 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
               </h2>
 
               <div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Enfoca la parte dañada para que podamos evaluar el problema
+                </p>
                 <FileUpload
-                  label="Foto de lo que está roto"
+                  label=""
                   onFileSelect={(files) => setFiles(prev => ({ ...prev, fotoRoto: files }))}
                   accept={{
                     'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
                   }}
-                  maxFiles={3}
+                  maxFiles={1}
                   maxSize={10 * 1024 * 1024}
                 />
                 {errors.fotoRoto && (

@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Contacto | Sonrisia',
+  title: 'Formulario | Ritest',
   description: 'Agenda tu reunión de descubrimiento con Sonrisia',
   viewport: {
     width: 'device-width',
