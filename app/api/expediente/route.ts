@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { listRecords, updateRecord } from '@/lib/airtable';
+import { findFormularioByExpediente, updateFormulario } from '../../../lib/airtable';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,10 +11,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Buscar registro por expediente
-    const records = await listRecords('Formulario', {
-      filterByFormula: `{Expediente} = '${expediente}'`,
-      maxRecords: '1',
-    });
+    const records = await findFormularioByExpediente(expediente);
 
     if (records.length === 0) {
       return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
@@ -50,18 +47,17 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
+    console.log('PUT Request body:', JSON.stringify(body, null, 2));
 
     // Buscar registro por expediente
-    const records = await listRecords('Formulario', {
-      filterByFormula: `{Expediente} = '${expediente}'`,
-      maxRecords: '1',
-    });
+    const records = await findFormularioByExpediente(expediente);
 
     if (records.length === 0) {
       return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
     }
 
     const recordId = records[0].id;
+    console.log('Found record ID:', recordId);
 
     // Preparar campos para actualizar (solo los que tienen valor)
     const fieldsToUpdate: any = {};
@@ -75,8 +71,10 @@ export async function PUT(request: NextRequest) {
     // Siempre actualizar fecha de última modificación
     fieldsToUpdate['Fecha Solicitud'] = new Date().toISOString();
 
+    console.log('Fields to update:', JSON.stringify(fieldsToUpdate, null, 2));
+
     // Actualizar registro
-    const updatedRecord = await updateRecord('Formulario', recordId, fieldsToUpdate);
+    const updatedRecord = await updateFormulario(recordId, fieldsToUpdate);
 
     return NextResponse.json({ 
       success: true, 

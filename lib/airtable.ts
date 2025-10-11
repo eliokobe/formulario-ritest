@@ -1,20 +1,12 @@
-interface BookingRecord {
-  id?: string;
-  fields: {
-    Nombre: string;
-    Email: string;
-    Fecha: string;
-  };
-}
-
+// Generic interface for Airtable responses
 interface AirtableResponse {
-  records: BookingRecord[];
+  records: any[];
 }
 
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME;
-const AIRTABLE_TABLE_CLIENTES = process.env.AIRTABLE_TABLE_CLIENTES;
+const AIRTABLE_TABLE_REPARACIONES = process.env.AIRTABLE_TABLE_REPARACIONES;
+const AIRTABLE_TABLE_FORMULARIO = process.env.AIRTABLE_TABLE_FORMULARIO;
 
 // Ensure table names with spaces/accents are URL-safe
 const getBaseUrl = (tableName: string) => `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`;
@@ -56,70 +48,9 @@ async function makeRequest(url: string, options: RequestInit = {}) {
   }
 }
 
-export async function findByDateTime(dateIso: string): Promise<BookingRecord | null> {
-  // Compare by minute to avoid millisecond mismatches and ensure proper datetime comparison
-  const filterFormula = `IS_SAME({Fecha}, "${dateIso}", 'minute')`;
-  const url = `${getBaseUrl(AIRTABLE_TABLE_NAME!)}?filterByFormula=${encodeURIComponent(filterFormula)}`;
-  
-  console.log('🔍 Checking availability for:', dateIso);
-  console.log('🔍 Filter formula:', filterFormula);
-  console.log('🔍 Request URL:', url);
-  
-  try {
-    const response = await makeRequest(url);
-    if (!response) {
-      throw new Error('No response received from Airtable');
-    }
-    const data: AirtableResponse = await response.json();
-    
-    console.log('🔍 Airtable response:', JSON.stringify(data, null, 2));
-    
-    return data.records.length > 0 ? data.records[0] : null;
-  } catch (error) {
-    console.error('Error finding booking by date time:', error);
-    throw new Error('Failed to check availability');
-  }
-}
+// Función eliminada - ya no se usa el sistema de bookings
 
-export async function createBooking({ 
-  name, 
-  email, 
-  date_time 
-}: { 
-  name: string; 
-  email: string; 
-  date_time: string; 
-}): Promise<{ id: string }> {
-  const payload = {
-    fields: {
-      Nombre: name,
-      Email: email,
-      Fecha: date_time,
-    },
-  };
-
-  try {
-    const response = await makeRequest(getBaseUrl(AIRTABLE_TABLE_NAME!), {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-
-    if (!response) {
-      throw new Error('No response received from Airtable');
-    }
-    
-    const data: BookingRecord = await response.json();
-    
-    if (!data.id) {
-      throw new Error('No ID returned from Airtable');
-    }
-    
-    return { id: data.id };
-  } catch (error) {
-    console.error('Error creating booking:', error);
-    throw new Error('Failed to create booking');
-  }
-}
+// Función eliminada - ya no se usa el sistema de bookings
 
 // Generic functions for any table
 export async function createRecord(tableName: string, fields: Record<string, any>): Promise<{ id: string }> {
@@ -190,12 +121,67 @@ export async function updateRecord(tableName: string, id: string, fields: Record
   }
 }
 
-// Specific function for creating clients
-export async function createClient(clientData: any): Promise<{ id: string }> {
-  return createRecord(AIRTABLE_TABLE_CLIENTES!, clientData);
-}
+// Función eliminada - ya no se usa la tabla de clientes
 
 // Specific function for creating repairs
 export async function createRepair(repairData: any): Promise<{ id: string }> {
-  return createRecord('Reparaciones', repairData);
+  return createRecord(AIRTABLE_TABLE_REPARACIONES!, repairData);
+}
+
+// Specific functions for Formulario table
+export async function findFormularioByExpediente(expediente: string): Promise<any[]> {
+  return listRecords(AIRTABLE_TABLE_FORMULARIO!, {
+    filterByFormula: `{Expediente} = '${expediente}'`,
+    maxRecords: '1',
+  });
+}
+
+export async function updateFormulario(recordId: string, data: any): Promise<{ id: string }> {
+  return updateRecord(AIRTABLE_TABLE_FORMULARIO!, recordId, data);
+}
+
+export async function createFormulario(data: any): Promise<{ id: string }> {
+  return createRecord(AIRTABLE_TABLE_FORMULARIO!, data);
+}
+
+// File upload utilities for base64 conversion
+export function convertFileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to convert file to base64'));
+      }
+    };
+    reader.onerror = error => reject(error);
+  });
+}
+
+// Convert base64 to Airtable attachment format
+export function createAirtableAttachment(base64: string, filename: string) {
+  return {
+    url: base64,
+    filename: filename,
+  };
+}
+
+// Helper function to process multiple files for Airtable
+export async function processFilesForAirtable(files: FileList | File[]): Promise<any[]> {
+  const attachments = [];
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i] instanceof File ? files[i] : (files as FileList)[i];
+    try {
+      const base64 = await convertFileToBase64(file);
+      attachments.push(createAirtableAttachment(base64, file.name));
+    } catch (error) {
+      console.error(`Error processing file ${file.name}:`, error);
+      throw new Error(`Failed to process file: ${file.name}`);
+    }
+  }
+  
+  return attachments;
 }
