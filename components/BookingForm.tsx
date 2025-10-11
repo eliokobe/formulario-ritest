@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatDateForDisplay, createUTCDateTime } from '@/lib/time-utils';
 import { cn } from '@/lib/utils';
-import { Loader2, User, Mail } from 'lucide-react';
+import { Loader2, User, Mail, Wrench, Building, MapPin } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface BookingFormProps {
   selectedDate: Date;
@@ -18,24 +19,53 @@ export function BookingForm({
   onBookingComplete,
   onBookingError 
 }: BookingFormProps) {
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    tecnico: '',
+    cliente: '',
+    direccion: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPreloaded, setIsPreloaded] = useState(false);
+
+  // Load prefilled data from URL parameters
+  useEffect(() => {
+    const preload = searchParams.get('preload');
+    if (preload === 'true') {
+      const urlTecnico = searchParams.get('tecnico') || '';
+      const urlCliente = searchParams.get('cliente') || '';
+      const urlDireccion = searchParams.get('direccion') || '';
+      const urlName = searchParams.get('name') || '';
+      const urlEmail = searchParams.get('email') || '';
+      
+      if (urlTecnico || urlCliente || urlDireccion || urlName || urlEmail) {
+        setFormData(prev => ({
+          ...prev,
+          name: urlName,
+          email: urlEmail,
+          tecnico: urlTecnico,
+          cliente: urlCliente,
+          direccion: urlDireccion,
+        }));
+        setIsPreloaded(true);
+      }
+    }
+  }, [searchParams]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = 'El nombre es requerido';
     }
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = 'El email es requerido';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
+      newErrors.email = 'Ingresa un email válido';
     }
 
     setErrors(newErrors);
@@ -58,6 +88,9 @@ export function BookingForm({
         body: JSON.stringify({
           name: formData.name.trim(),
           email: formData.email.trim(),
+          tecnico: formData.tecnico.trim(),
+          cliente: formData.cliente.trim(),
+          direccion: formData.direccion.trim(),
           date_time: utcDateTime,
         }),
       });
@@ -77,7 +110,7 @@ export function BookingForm({
       }
 
       onBookingComplete();
-      setFormData({ name: '', email: '' });
+      setFormData({ name: '', email: '', tecnico: '', cliente: '', direccion: '' });
     } catch (error: any) {
       const msg = typeof error?.message === 'string' ? error.message : 'Something went wrong. Please try again.';
       onBookingError(msg);

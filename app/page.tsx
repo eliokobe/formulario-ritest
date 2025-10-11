@@ -11,16 +11,28 @@ import { formatDateForDisplay, getUserTimezone } from '@/lib/time-utils';
 import { Clock, MapPin, CheckCircle, User } from 'lucide-react';
 import Image from 'next/image';
 import { isBefore, startOfDay } from 'date-fns';
+import { useSearchParams } from 'next/navigation';
 
 type BookingStep = 1 | 2 | 3;
 
 export default function Home() {
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<BookingStep>(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isBooked, setIsBooked] = useState(false);
   const [calendarKey, setCalendarKey] = useState(0); // Forzar re-render del calendario
   const { toast, showToast, hideToast } = useToast();
+  
+  // Get URL parameters for pre-filling
+  const [prefilledData, setPrefilledData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    record: '',
+    date: '',
+    time: ''
+  });
 
   // RESET COMPLETO cada vez que se carga la página
   useEffect(() => {

@@ -2,22 +2,31 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Loader2, User, Wrench, Calendar, FileText, DollarSign, Upload, Camera, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, User, Wrench, Calendar, FileText, DollarSign, Upload, Camera, CheckCircle2, AlertCircle, MapPin } from 'lucide-react';
 import { serviciosOptions, tecnicosOptions, estadosReparacion } from '@/lib/repair-options';
 
 interface RepairFormProps {
   onRepairComplete: () => void;
   onRepairError: (error: string) => void;
+  prefilledData?: {
+    tecnico?: string;
+    cliente?: string;
+    direccion?: string;
+    record?: string;
+  };
 }
 
 export function RepairForm({ 
   onRepairComplete,
-  onRepairError 
+  onRepairError,
+  prefilledData
 }: RepairFormProps) {
   const [formData, setFormData] = useState({
     servicios: [] as string[],
     tecnicos: '',
-    tecnico: '',
+    tecnico: prefilledData?.tecnico || '',
+    cliente: prefilledData?.cliente || '',
+    direccion: prefilledData?.direccion || '',
     fechaVisita: '',
     resultado: '',
     reparacion: '',
@@ -74,6 +83,8 @@ export function RepairForm({
         Servicios: formData.servicios,
         Técnicos: formData.tecnicos,
         Técnico: formData.tecnico,
+        Cliente: formData.cliente,
+        Dirección: formData.direccion,
         "Fecha visita": formData.fechaVisita,
         Resultado: formData.resultado,
         Reparación: formData.reparacion,
@@ -104,7 +115,9 @@ export function RepairForm({
       setFormData({
         servicios: [],
         tecnicos: '',
-        tecnico: '',
+        tecnico: prefilledData?.tecnico || '',
+        cliente: prefilledData?.cliente || '',
+        direccion: prefilledData?.direccion || '',
         fechaVisita: '',
         resultado: '',
         reparacion: '',
@@ -220,6 +233,44 @@ export function RepairForm({
                 onChange={(e) => handleInputChange('tecnico', e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200"
                 placeholder="Nombre del técnico"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Cliente */}
+          <div>
+            <label htmlFor="cliente" className="block text-sm font-medium text-gray-700 mb-2">
+              Cliente
+            </label>
+            <div className="relative">
+              <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                id="cliente"
+                value={formData.cliente}
+                onChange={(e) => handleInputChange('cliente', e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200"
+                placeholder="Nombre del cliente"
+              />
+            </div>
+          </div>
+
+          {/* Dirección */}
+          <div>
+            <label htmlFor="direccion" className="block text-sm font-medium text-gray-700 mb-2">
+              Dirección
+            </label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                id="direccion"
+                value={formData.direccion}
+                onChange={(e) => handleInputChange('direccion', e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 transition-all duration-200"
+                placeholder="Dirección del cliente"
               />
             </div>
           </div>
