@@ -1,6 +1,6 @@
-# Aplicación de Reservas Minimalista
+# Parte de Trabajo - Sistema de Reparaciones
 
-Una aplicación web moderna para agendar reuniones de descubrimiento de 30 minutos, construida con Next.js, TypeScript, Tailwind CSS y conectada a Airtable.
+Sistema moderno para gestión de partes de trabajo y reparaciones técnicas, conectado con Airtable. Incluye formularios interactivos para completar servicios técnicos con captura de fotos y documentación.
 
 ## Características Principales
 
