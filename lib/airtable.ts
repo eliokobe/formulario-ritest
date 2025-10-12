@@ -7,6 +7,8 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 const AIRTABLE_TABLE_REPARACIONES = process.env.AIRTABLE_TABLE_REPARACIONES;
 const AIRTABLE_TABLE_FORMULARIO = process.env.AIRTABLE_TABLE_FORMULARIO;
+const AIRTABLE_TABLE_BOOKINGS = process.env.AIRTABLE_TABLE_NAME;
+const AIRTABLE_TABLE_CLIENTES = process.env.AIRTABLE_TABLE_CLIENTES;
 
 // Ensure table names with spaces/accents are URL-safe
 const getBaseUrl = (tableName: string) => `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`;
@@ -48,9 +50,7 @@ async function makeRequest(url: string, options: RequestInit = {}) {
   }
 }
 
-// Función eliminada - ya no se usa el sistema de bookings
-
-// Función eliminada - ya no se usa el sistema de bookings
+// Generic helpers specific to tables that remain in use
 
 // Generic functions for any table
 export async function createRecord(tableName: string, fields: Record<string, any>): Promise<{ id: string }> {
@@ -144,7 +144,33 @@ export async function updateRecord(tableName: string, id: string, fields: Record
   }
 }
 
-// Función eliminada - ya no se usa la tabla de clientes
+// Booking helpers
+export async function findByDateTime(dateTime: string): Promise<any | null> {
+  if (!AIRTABLE_TABLE_BOOKINGS) {
+    throw new Error('AIRTABLE_TABLE_NAME is not configured');
+  }
+
+  const records = await listRecords(AIRTABLE_TABLE_BOOKINGS, {
+    filterByFormula: `{date_time} = '${dateTime}'`,
+    maxRecords: '1',
+  });
+
+  return records.length > 0 ? records[0] : null;
+}
+
+export async function createBooking(fields: { name: string; email: string; date_time: string }): Promise<{ id: string }> {
+  if (!AIRTABLE_TABLE_BOOKINGS) {
+    throw new Error('AIRTABLE_TABLE_NAME is not configured');
+  }
+
+  const payload = {
+    Name: fields.name,
+    Email: fields.email,
+    date_time: fields.date_time,
+  };
+
+  return createRecord(AIRTABLE_TABLE_BOOKINGS, payload);
+}
 
 // Specific function for creating repairs
 export async function createRepair(repairData: any): Promise<{ id: string }> {
@@ -188,6 +214,15 @@ export async function updateFormulario(recordId: string, data: any): Promise<{ i
 
 export async function createFormulario(data: any): Promise<{ id: string }> {
   return createRecord(AIRTABLE_TABLE_FORMULARIO!, data);
+}
+
+// Clients table helpers
+export async function createClient(fields: Record<string, any>): Promise<{ id: string }> {
+  if (!AIRTABLE_TABLE_CLIENTES) {
+    throw new Error('AIRTABLE_TABLE_CLIENTES is not configured');
+  }
+
+  return createRecord(AIRTABLE_TABLE_CLIENTES, fields);
 }
 
 // File upload utilities for base64 conversion
