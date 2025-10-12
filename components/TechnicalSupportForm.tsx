@@ -270,30 +270,19 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
         <div className="text-center mb-6 sm:mb-8">
           <div className="flex items-center justify-center mb-4">
             <Image
-              src="/logo.png"
-              alt="Logo"
+              src="/iberdrola-colaborador-oficial.png"
+              alt="Iberdrola Colaborador Oficial"
               width={100}
               height={100}
-              className="object-contain sm:w-[120px] sm:h-[120px]"
+              className="object-contain sm:w-[140px] sm:h-[140px]"
             />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            {isEditMode ? `Expediente ${expediente}` : 'Formulario de Incidencia'}
+            Formulario de Incidencia
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
-            {isEditMode 
-              ? `Editando solicitud de ${existingData?.cliente || 'cliente'}`
-              : 'Completa este formulario en menos de un minuto para recibir asistencia inmediata'
-            }
+            Completa este formulario en menos de un minuto para recibir asistencia inmediata
           </p>
-          {isEditMode && existingData && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">
-                <strong>Cliente:</strong> {existingData.cliente}<br/>
-                <strong>Dirección:</strong> {existingData.direccion}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Progress Steps Section */}

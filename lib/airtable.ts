@@ -151,6 +151,17 @@ export async function createRepair(repairData: any): Promise<{ id: string }> {
   return createRecord(AIRTABLE_TABLE_REPARACIONES!, repairData);
 }
 
+export async function findRepairByExpediente(expediente: string): Promise<any[]> {
+  return listRecords(AIRTABLE_TABLE_REPARACIONES!, {
+    filterByFormula: `{Expediente} = '${expediente}'`,
+    maxRecords: '1',
+  });
+}
+
+export async function updateRepairRecord(recordId: string, data: any): Promise<{ id: string }> {
+  return updateRecord(AIRTABLE_TABLE_REPARACIONES!, recordId, data);
+}
+
 // Specific functions for Formulario table
 export async function findFormularioByExpediente(expediente: string): Promise<any[]> {
   return listRecords(AIRTABLE_TABLE_FORMULARIO!, {
@@ -228,27 +239,35 @@ export async function uploadImageToAirtable(recordId: string, fieldName: string,
   }
 
   // Extract base64 data from the image object
-  let base64Data: string;
-  let filename: string;
-  
-  if (typeof imageData === 'string' && imageData.startsWith('data:image/')) {
-    // Direct base64 string
-    base64Data = imageData.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-    filename = 'image.jpg';
-  } else if (imageData && imageData.url && imageData.filename) {
-    // Object with url and filename
-    base64Data = imageData.url.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+  let dataUrl: string | undefined;
+  let filename: string | undefined;
+
+  if (typeof imageData === 'string' && imageData.startsWith('data:')) {
+    dataUrl = imageData;
+  } else if (imageData && typeof imageData === 'object' && typeof imageData.url === 'string') {
+    dataUrl = imageData.url;
     filename = imageData.filename;
-  } else {
+  }
+
+  if (!dataUrl) {
     throw new Error('Invalid image data format');
   }
+
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) {
+    throw new Error('Invalid data URL format');
+  }
+
+  const contentType = match[1];
+  const base64Data = match[2];
+  const resolvedFilename = filename || `attachment.${contentType.split('/')[1] || 'bin'}`;
 
   const uploadUrl = `https://content.airtable.com/v0/${AIRTABLE_BASE_ID}/${recordId}/${encodeURIComponent(fieldName)}/uploadAttachment`;
   
   const payload = JSON.stringify({
-    contentType: 'image/jpeg',
+    contentType,
     file: base64Data,
-    filename: filename,
+    filename: resolvedFilename,
   });
 
   console.log(`📤 Uploading to: ${uploadUrl}`);

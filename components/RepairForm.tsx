@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { FileUpload } from '@/components/ui/file-upload';
@@ -33,6 +33,13 @@ export function RepairForm({
 }: RepairFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [expediente, setExpediente] = useState<string>('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingAttachments, setExistingAttachments] = useState({
+    factura: [] as any[],
+    foto: [] as any[],
+  });
   
   const [formData, setFormData] = useState({
     // Step 1: Datos Generales
@@ -51,6 +58,50 @@ export function RepairForm({
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const expedienteParam = params.get('expediente');
+
+    if (expedienteParam) {
+      setExpediente(expedienteParam);
+      setIsLoading(true);
+      loadExpedienteData(expedienteParam);
+    }
+  }, []);
+
+  const loadExpedienteData = async (expedienteId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/repairs?expediente=${encodeURIComponent(expedienteId)}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsEditMode(true);
+        setFormData(prev => ({
+          ...prev,
+          cliente: data.cliente || '',
+          direccion: data.direccion || '',
+          tecnico: data.tecnico || '',
+          reparacion: data.reparacion || '',
+          cuadroElectrico: data.cuadroElectrico || '',
+        }));
+        setExistingAttachments({
+          factura: Array.isArray(data.factura) ? data.factura : [],
+          foto: Array.isArray(data.foto) ? data.foto : [],
+        });
+      } else if (response.status === 404) {
+        onRepairError(`Expediente ${expedienteId} no encontrado`);
+      } else {
+        onRepairError('No se pudo cargar la información de la reparación');
+      }
+    } catch (error) {
+      console.error('Error cargando expediente:', error);
+      onRepairError('Error al cargar los datos del expediente');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
@@ -72,10 +123,15 @@ export function RepairForm({
         if (!formData.reparacion.trim()) {
           newErrors.reparacion = 'Selecciona el tipo de reparación';
         }
+        if (formData.reparacion === 'Reparar el cuadro eléctrico' && !formData.cuadroElectrico.trim()) {
+          newErrors.cuadroElectrico = 'Selecciona qué se reparó en el cuadro eléctrico';
+        }
         break;
         
       case 3:
-        // Files are optional but we could add validation here if needed
+        if (files.foto.length === 0 && existingAttachments.foto.length === 0) {
+          newErrors.foto = 'Adjunta al menos una foto de la reparación';
+        }
         break;
     }
 
@@ -120,8 +176,16 @@ export function RepairForm({
         Foto: fotoUploads.length > 0 ? fotoUploads : undefined,
       };
 
-      const response = await fetch('/api/repairs', {
-        method: 'POST',
+      const isUpdate = isEditMode && Boolean(expediente);
+      if (!isUpdate && expediente) {
+        (repairData as any).Expediente = expediente;
+      }
+      const endpoint = isUpdate
+        ? `/api/repairs?expediente=${encodeURIComponent(expediente)}`
+        : '/api/repairs';
+
+      const response = await fetch(endpoint, {
+        method: isUpdate ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(repairData),
       });
@@ -165,6 +229,9 @@ export function RepairForm({
     if (errors.reparacion) {
       setErrors(prev => ({ ...prev, reparacion: '' }));
     }
+    if (errors.cuadroElectrico && reparacion !== 'Reparar el cuadro eléctrico') {
+      setErrors(prev => ({ ...prev, cuadroElectrico: '' }));
+    }
   };
 
   const handleCuadroElectricoChange = (opcion: string) => {
@@ -172,7 +239,32 @@ export function RepairForm({
       ...prev,
       cuadroElectrico: opcion
     }));
+
+    if (errors.cuadroElectrico) {
+      setErrors(prev => ({ ...prev, cuadroElectrico: '' }));
+    }
   };
+
+  const handleFileChange = (field: 'foto' | 'factura', selectedFiles: File[]) => {
+    setFiles(prev => ({ ...prev, [field]: selectedFiles }));
+    setExistingAttachments(prev => ({
+      ...prev,
+      [field]: selectedFiles.length > 0 ? [] : prev[field],
+    }));
+
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[300px]">
+        <Loader2 className="w-6 h-6 animate-spin text-[#008606]" />
+        <span className="ml-3 text-sm text-gray-600">Cargando información del expediente...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 xs:px-6 sm:px-6 lg:px-8">
@@ -249,7 +341,7 @@ export function RepairForm({
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Datos Generales
               </h2>
-              
+
               <div>
                 <label htmlFor="cliente" className="block text-sm font-medium text-gray-700 mb-2">
                   Cliente *
@@ -261,11 +353,14 @@ export function RepairForm({
                     id="cliente"
                     value={formData.cliente}
                     onChange={(e) => handleInputChange('cliente', e.target.value)}
+                    readOnly={isEditMode}
                     className={cn(
                       "w-full pl-10 pr-4 py-4 text-base rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2 touch-manipulation",
-                      errors.cliente 
-                        ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                        : "border-gray-300 focus:ring-green-200 focus:border-green-400"
+                      isEditMode
+                        ? "bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed focus:ring-0 focus:border-gray-200"
+                        : errors.cliente 
+                          ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                          : "border-gray-300 focus:ring-green-200 focus:border-green-400"
                     )}
                     placeholder="Nombre del cliente"
                   />
@@ -286,11 +381,14 @@ export function RepairForm({
                     id="direccion"
                     value={formData.direccion}
                     onChange={(e) => handleInputChange('direccion', e.target.value)}
+                    readOnly={isEditMode}
                     className={cn(
                       "w-full pl-10 pr-4 py-4 text-base rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                      errors.direccion 
-                        ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                        : "border-gray-300 focus:ring-green-200 focus:border-green-400"
+                      isEditMode
+                        ? "bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed focus:ring-0 focus:border-gray-200"
+                        : errors.direccion 
+                          ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                          : "border-gray-300 focus:ring-green-200 focus:border-green-400"
                     )}
                     placeholder="Dirección del cliente"
                   />
@@ -311,11 +409,14 @@ export function RepairForm({
                     id="tecnico" 
                     value={formData.tecnico}
                     onChange={(e) => handleInputChange('tecnico', e.target.value)}
+                    readOnly={isEditMode}
                     className={cn(
                       "w-full pl-10 pr-4 py-4 text-base rounded-xl border transition-all duration-200 focus:shadow-md focus:ring-2",
-                      errors.tecnico 
-                        ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
-                        : "border-gray-300 focus:ring-green-200 focus:border-green-400"
+                      isEditMode
+                        ? "bg-gray-100 border-gray-200 text-gray-700 cursor-not-allowed focus:ring-0 focus:border-gray-200"
+                        : errors.tecnico 
+                          ? "border-red-300 focus:ring-red-200 focus:border-red-400" 
+                          : "border-gray-300 focus:ring-green-200 focus:border-green-400"
                     )}
                     placeholder="Nombre del técnico"
                   />
@@ -407,6 +508,9 @@ export function RepairForm({
                       </label>
                     ))}
                   </div>
+                  {errors.cuadroElectrico && (
+                    <p className="text-red-600 text-sm mt-2">{errors.cuadroElectrico}</p>
+                  )}
                 </motion.div>
               )}
             </motion.div>
@@ -427,17 +531,24 @@ export function RepairForm({
               
               <FileUpload
                 label="Foto de lo Reparado"
-                onFileSelect={(files) => setFiles(prev => ({ ...prev, foto: files }))}
+                required
+                error={errors.foto}
+                onFileSelect={(selected) => handleFileChange('foto', selected)}
                 accept={{
                   'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
                 }}
                 maxFiles={3}
                 maxSize={5 * 1024 * 1024}
               />
+              {existingAttachments.foto.length > 0 && files.foto.length === 0 && (
+                <p className="text-sm text-gray-500 -mt-2">
+                  Ya hay {existingAttachments.foto.length === 1 ? 'una foto' : `${existingAttachments.foto.length} fotos`} almacenada para este expediente.
+                </p>
+              )}
 
               <FileUpload
                 label="Factura Adjunta"
-                onFileSelect={(files) => setFiles(prev => ({ ...prev, factura: files }))}
+                onFileSelect={(selected) => handleFileChange('factura', selected)}
                 accept={{
                   'application/pdf': ['.pdf'],
                   'image/*': ['.png', '.jpg', '.jpeg'],
@@ -445,6 +556,11 @@ export function RepairForm({
                 maxFiles={1}
                 maxSize={10 * 1024 * 1024}
               />
+              {existingAttachments.factura.length > 0 && files.factura.length === 0 && (
+                <p className="text-sm text-gray-500 -mt-2">
+                  Ya hay {existingAttachments.factura.length === 1 ? 'una factura' : `${existingAttachments.factura.length} facturas`} vinculada a este expediente.
+                </p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

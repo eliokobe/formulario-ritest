@@ -3,46 +3,69 @@
 // Compresses images to reduce payload size
 
 export async function uploadFile(file: File): Promise<{ url: string; filename: string }> {
+  if (file.type === 'application/pdf') {
+    const base64 = await fileToBase64(file);
+    return {
+      url: base64,
+      filename: file.name,
+    };
+  }
+
+  return compressImage(file);
+}
+
+export async function uploadFiles(files: File[]): Promise<Array<{ url: string; filename: string }>> {
+  const uploadPromises = files.map(file => uploadFile(file));
+  return Promise.all(uploadPromises);
+}
+
+async function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    // Create canvas for image compression
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to convert file to base64'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+  });
+}
+
+async function compressImage(file: File): Promise<{ url: string; filename: string }> {
+  return new Promise((resolve, reject) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     const img = new Image();
-    
+
     img.onload = () => {
-      // Calculate new dimensions (max 800px on longest side)
       const maxSize = 800;
       let { width, height } = img;
-      
-      if (width > height) {
-        if (width > maxSize) {
-          height = (height * maxSize) / width;
-          width = maxSize;
-        }
-      } else {
-        if (height > maxSize) {
-          width = (width * maxSize) / height;
-          height = maxSize;
-        }
+
+      if (width > height && width > maxSize) {
+        height = (height * maxSize) / width;
+        width = maxSize;
+      } else if (height >= width && height > maxSize) {
+        width = (width * maxSize) / height;
+        height = maxSize;
       }
-      
-      // Set canvas dimensions and draw compressed image
+
       canvas.width = width;
       canvas.height = height;
       ctx?.drawImage(img, 0, 0, width, height);
-      
-      // Convert to base64 with compression (0.7 quality)
+
       const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-      
+
       resolve({
         url: compressedBase64,
-        filename: file.name.replace(/\.[^/.]+$/, '.jpg'), // Change extension to jpg
+        filename: file.name.replace(/\.[^/.]+$/, '.jpg'),
       });
     };
-    
+
     img.onerror = () => reject(new Error('Failed to load image for compression'));
-    
-    // Load the image
+
     const reader = new FileReader();
     reader.onload = (e) => {
       if (e.target?.result) {
@@ -52,9 +75,4 @@ export async function uploadFile(file: File): Promise<{ url: string; filename: s
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsDataURL(file);
   });
-}
-
-export async function uploadFiles(files: File[]): Promise<Array<{ url: string; filename: string }>> {
-  const uploadPromises = files.map(file => uploadFile(file));
-  return Promise.all(uploadPromises);
 }
