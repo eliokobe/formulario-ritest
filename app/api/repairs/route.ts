@@ -65,8 +65,9 @@ export async function POST(request: NextRequest) {
     }
 
     body.Resultado = resultado;
-    body.Reparación = reparacion;
-    body['Cuadro eléctrico'] = cuadroElectrico;
+    // Only set select fields if they have values, otherwise don't include them
+    body.Reparación = reparacion || undefined;
+    body['Cuadro eléctrico'] = cuadroElectrico || undefined;
     body.Problema = problema;
 
     // Create the repair record
@@ -143,6 +144,9 @@ export async function PUT(request: NextRequest) {
     const recordId = records[0].id;
     const fieldsToUpdate: Record<string, any> = {};
 
+    // Define fields that are select/multiple-select in Airtable
+    const selectFields = ['Reparación', 'Cuadro eléctrico'];
+    
     const textFields: Array<[string, string]> = [
       ['Resultado', 'Resultado'],
       ['Reparación', 'Reparación'],
@@ -158,7 +162,17 @@ export async function PUT(request: NextRequest) {
         const value = body[bodyKey];
         if (typeof value === 'string') {
           const trimmed = value.trim();
-          fieldsToUpdate[airtableField] = trimmed.length > 0 ? trimmed : '';
+          // For select fields, only add if not empty, otherwise set to null to clear
+          if (selectFields.includes(airtableField)) {
+            if (trimmed.length > 0) {
+              fieldsToUpdate[airtableField] = trimmed;
+            } else {
+              fieldsToUpdate[airtableField] = null;
+            }
+          } else {
+            // For text fields, use empty string if trimmed is empty
+            fieldsToUpdate[airtableField] = trimmed;
+          }
         }
       }
     });

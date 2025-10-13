@@ -54,7 +54,15 @@ async function makeRequest(url: string, options: RequestInit = {}) {
 
 // Generic functions for any table
 export async function createRecord(tableName: string, fields: Record<string, any>): Promise<{ id: string }> {
-  const payload = { fields };
+  // Filter out undefined values to avoid sending them to Airtable
+  const cleanedFields = Object.entries(fields).reduce((acc, [key, value]) => {
+    if (value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {} as Record<string, any>);
+
+  const payload = { fields: cleanedFields };
 
   try {
     const response = await makeRequest(getBaseUrl(tableName), {
@@ -106,7 +114,17 @@ export async function updateRecord(tableName: string, id: string, fields: Record
   console.log('  recordId:', id);
   console.log('  fields keys:', Object.keys(fields));
   
-  const payload = { fields };
+  // Filter out undefined values and keep null values (to clear fields in Airtable)
+  const cleanedFields = Object.entries(fields).reduce((acc, [key, value]) => {
+    if (value !== undefined) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {} as Record<string, any>);
+  
+  console.log('  cleaned fields keys:', Object.keys(cleanedFields));
+
+  const payload = { fields: cleanedFields };
   console.log('📤 Payload size:', JSON.stringify(payload).length, 'characters');
 
   try {

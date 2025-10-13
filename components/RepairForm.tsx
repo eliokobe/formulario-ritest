@@ -194,15 +194,17 @@ export function RepairForm({
         Foto: fotoUploads.length > 0 ? fotoUploads : undefined,
       };
 
+      // When editing, clear fields that don't apply based on result
+      // Use null instead of empty string for select fields to avoid Airtable errors
       if (!isRepaired && isEditMode) {
-        repairData['Reparación'] = '';
-        repairData['Cuadro eléctrico'] = '';
+        repairData['Reparación'] = null;
+        repairData['Cuadro eléctrico'] = null;
       }
 
       if (isRepaired && isEditMode) {
         repairData['Problema'] = '';
         if (formData.reparacion !== 'Reparar el cuadro eléctrico') {
-          repairData['Cuadro eléctrico'] = '';
+          repairData['Cuadro eléctrico'] = null;
         }
       }
 
