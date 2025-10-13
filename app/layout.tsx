@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Formulario | Ritest',
-  description: 'Agenda tu reunión de descubrimiento con Sonrisia',
+  description: 'Gestión de formularios técnicos y de onboarding para Ritest',
   viewport: {
     width: 'device-width',
     initialScale: 1,

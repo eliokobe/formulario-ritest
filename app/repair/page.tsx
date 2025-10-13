@@ -58,7 +58,7 @@ export default function RepairPage() {
               transition={{ delay: 0.4 }}
               className="text-gray-600 mb-4"
             >
-              La información de la reparación ha sido guardada exitosamente en Airtable.
+              La información de la reparación se ha guardado correctamente.
             </motion.p>
           </motion.div>
         </div>

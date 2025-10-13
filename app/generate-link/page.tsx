@@ -126,7 +126,7 @@ export default function GenerateLink() {
             <ul className="text-blue-700 text-sm space-y-1">
               <li>• Cada expediente tiene un enlace único</li>
               <li>• El cliente puede completar/editar su solicitud</li>
-              <li>• Los datos se guardan automáticamente en Airtable</li>
+              <li>• Los datos se sincronizan automáticamente en el sistema</li>
               <li>• Solo se actualiza el registro del expediente específico</li>
             </ul>
           </div>
