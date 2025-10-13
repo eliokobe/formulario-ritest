@@ -3,9 +3,17 @@
 // Compresses images to reduce payload size
 // Optimized for mobile devices (especially Android)
 
+const MOBILE_REGEX = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+
+const isMobileDevice = () => {
+  return typeof navigator !== 'undefined' && typeof navigator.userAgent === 'string'
+    ? MOBILE_REGEX.test(navigator.userAgent)
+    : false;
+};
+
 export async function uploadFile(file: File): Promise<{ url: string; filename: string }> {
   // For mobile devices, reduce max size significantly
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isMobile = isMobileDevice();
   const maxSize = isMobile ? 5 * 1024 * 1024 : 10 * 1024 * 1024; // 5MB mobile, 10MB desktop
   
   if (file.size > maxSize) {
@@ -25,7 +33,7 @@ export async function uploadFile(file: File): Promise<{ url: string; filename: s
 
 export async function uploadFiles(files: File[]): Promise<Array<{ url: string; filename: string }>> {
   // Process files sequentially on mobile to avoid memory issues
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const isMobile = isMobileDevice();
   
   if (isMobile) {
     const results = [];
