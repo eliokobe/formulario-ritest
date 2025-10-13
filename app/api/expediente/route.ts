@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       id: record.id,
       expediente: record.fields['Expediente'],
       cliente: record.fields['Cliente'],
+      telefono: record.fields['Teléfono'],
       direccion: record.fields['Dirección'],
       fotoGeneral: record.fields['Foto general'],
       fotoEtiqueta: record.fields['Foto etiqueta'],
@@ -83,6 +84,18 @@ export async function PUT(request: NextRequest) {
     const fieldsToUpdate: any = {};
     
     console.log('🔧 Preparing text fields to update...');
+    if (body['Cliente']) {
+      console.log('� Processing Cliente');
+      fieldsToUpdate['Cliente'] = body['Cliente'];
+    }
+    if (body['Teléfono']) {
+      console.log('� Processing Teléfono');
+      fieldsToUpdate['Teléfono'] = body['Teléfono'];
+    }
+    if (body['Dirección']) {
+      console.log('� Processing Dirección');
+      fieldsToUpdate['Dirección'] = body['Dirección'];
+    }
     if (body['Problema']) {
       console.log('� Processing Problema');
       fieldsToUpdate['Problema'] = body['Problema'];

@@ -60,7 +60,7 @@ export function WorkReport({
     }
 
     if (!files.fotoReparacion) {
-      newErrors.fotoReparacion = 'Sube una foto del punto de recarga reparado';
+      newErrors.fotoReparacion = 'Sube una foto del punto de recarga después de la intervención';
     }
 
     if (!files.facturaServicio) {
@@ -262,7 +262,7 @@ export function WorkReport({
         {/* Foto del punto de recarga */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Sube una foto del punto de recarga ya reparado *
+            Sube una foto del punto de recarga después de la intervención *
           </label>
           <div className="flex flex-col space-y-3">
             <div className="flex items-center space-x-4">

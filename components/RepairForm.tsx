@@ -46,10 +46,12 @@ export function RepairForm({
     cliente: '',
     direccion: '',
     tecnico: '',
-    
+
     // Step 2: Reparación
+    resultado: '',
     reparacion: '', // Single option
     cuadroElectrico: '', // Single option
+    problema: '',
   });
   
   const [files, setFiles] = useState({
@@ -78,13 +80,16 @@ export function RepairForm({
       if (response.ok) {
         const data = await response.json();
         setIsEditMode(true);
+        const isRepaired = data.resultado === 'Reparado';
         setFormData(prev => ({
           ...prev,
           cliente: data.cliente || '',
           direccion: data.direccion || '',
           tecnico: data.tecnico || '',
-          reparacion: data.reparacion || '',
-          cuadroElectrico: data.cuadroElectrico || '',
+          resultado: data.resultado || '',
+          reparacion: isRepaired ? data.reparacion || '' : '',
+          cuadroElectrico: isRepaired ? data.cuadroElectrico || '' : '',
+          problema: !isRepaired ? data.problema || '' : '',
         }));
         setExistingAttachments({
           factura: Array.isArray(data.factura) ? data.factura : [],
@@ -120,17 +125,25 @@ export function RepairForm({
         break;
         
       case 2:
-        if (!formData.reparacion.trim()) {
-          newErrors.reparacion = 'Selecciona el tipo de reparación';
+        if (!formData.resultado.trim()) {
+          newErrors.resultado = 'Indica si se ha conseguido reparar';
         }
-        if (formData.reparacion === 'Reparar el cuadro eléctrico' && !formData.cuadroElectrico.trim()) {
-          newErrors.cuadroElectrico = 'Selecciona qué se reparó en el cuadro eléctrico';
+        if (formData.resultado === 'Reparado') {
+          if (!formData.reparacion.trim()) {
+            newErrors.reparacion = 'Selecciona el tipo de reparación';
+          }
+          if (formData.reparacion === 'Reparar el cuadro eléctrico' && !formData.cuadroElectrico.trim()) {
+            newErrors.cuadroElectrico = 'Selecciona qué se reparó en el cuadro eléctrico';
+          }
+        }
+        if (formData.resultado === 'No reparado' && !formData.problema.trim()) {
+          newErrors.problema = 'Describe cuál ha sido el problema';
         }
         break;
         
       case 3:
         if (files.foto.length === 0 && existingAttachments.foto.length === 0) {
-          newErrors.foto = 'Adjunta al menos una foto de la reparación';
+          newErrors.foto = 'Adjunta al menos una foto del punto de recarga después de la intervención';
         }
         break;
     }
@@ -166,15 +179,32 @@ export function RepairForm({
         fotoUploads = await uploadFiles(files.foto);
       }
 
-      const repairData = {
-        Reparación: formData.reparacion,
-        "Cuadro eléctrico": formData.cuadroElectrico || undefined,
+      const isRepaired = formData.resultado === 'Reparado';
+      const repairData: Record<string, any> = {
+        Resultado: formData.resultado,
+        Reparación: isRepaired ? formData.reparacion : undefined,
+        "Cuadro eléctrico": isRepaired && formData.reparacion === 'Reparar el cuadro eléctrico'
+          ? formData.cuadroElectrico || undefined
+          : undefined,
+        Problema: !isRepaired ? formData.problema : undefined,
         Técnico: formData.tecnico,
         Cliente: formData.cliente,
         Dirección: formData.direccion,
         Factura: facturaUploads.length > 0 ? facturaUploads : undefined,
         Foto: fotoUploads.length > 0 ? fotoUploads : undefined,
       };
+
+      if (!isRepaired && isEditMode) {
+        repairData['Reparación'] = '';
+        repairData['Cuadro eléctrico'] = '';
+      }
+
+      if (isRepaired && isEditMode) {
+        repairData['Problema'] = '';
+        if (formData.reparacion !== 'Reparar el cuadro eléctrico') {
+          repairData['Cuadro eléctrico'] = '';
+        }
+      }
 
       const isUpdate = isEditMode && Boolean(expediente);
       if (!isUpdate && expediente) {
@@ -216,6 +246,24 @@ export function RepairForm({
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleResultadoChange = (resultado: 'Reparado' | 'No reparado') => {
+    setFormData(prev => ({
+      ...prev,
+      resultado,
+      problema: resultado === 'Reparado' ? '' : prev.problema,
+      reparacion: resultado === 'No reparado' ? '' : prev.reparacion,
+      cuadroElectrico: resultado === 'No reparado' ? '' : prev.cuadroElectrico,
+    }));
+
+    setErrors(prev => ({
+      ...prev,
+      resultado: '',
+      ...(resultado === 'Reparado'
+        ? { problema: '' }
+        : { reparacion: '', cuadroElectrico: '' }),
+    }));
   };
 
   const handleReparacionChange = (reparacion: string) => {
@@ -267,12 +315,12 @@ export function RepairForm({
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 xs:px-6 sm:px-6 lg:px-8">
+    <div className="min-h-dvh flex flex-col justify-center gap-6 max-w-4xl mx-auto px-4 xs:px-6 sm:px-6 lg:px-8 py-6">
       {/* Logo, Header and Progress Steps Combined */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 shadow-2xl border border-white/20 mb-4 sm:mb-8 landscape-compact"
+        className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 xs:p-5 sm:p-6 md:p-8 shadow-2xl border border-white/20 landscape-compact"
       >
         {/* Logo and Header Section */}
         <div className="text-center mb-6 sm:mb-8">
@@ -311,18 +359,6 @@ export function RepairForm({
             </span>
           </div>
           
-          {/* Step Labels */}
-          <div className="text-center">
-            <motion.h3
-              key={currentStep}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="text-lg font-semibold text-gray-900"
-            >
-              {steps[currentStep - 1].title}
-            </motion.h3>
-          </div>
         </div>
       </motion.div>
 
@@ -438,78 +474,145 @@ export function RepairForm({
               className="space-y-6"
             >
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
-                ¿Qué has tenido que reparar?
+                Reparación
               </h2>
 
-              {/* Tipo de Reparación */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Selecciona el tipo de reparación realizada *
+                  ¿Se ha conseguido reparar el punto de recarga? *
                 </label>
-                <div className="space-y-3">
-                  {serviciosOptions.map((servicio) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {['Reparado', 'No reparado'].map((opcion) => (
                     <label
-                      key={servicio}
+                      key={opcion}
                       className={cn(
                         "flex items-center p-4 sm:p-5 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md active:scale-95 touch-manipulation",
-                        formData.reparacion === servicio
+                        formData.resultado === opcion
                           ? "border-[#008606] bg-[#008606]/10"
                           : "border-gray-300 hover:border-gray-400"
                       )}
                     >
                       <input
                         type="radio"
-                        name="reparacion"
-                        value={servicio}
-                        checked={formData.reparacion === servicio}
-                        onChange={() => handleReparacionChange(servicio)}
+                        name="resultado"
+                        value={opcion}
+                        checked={formData.resultado === opcion}
+                        onChange={() => handleResultadoChange(opcion as 'Reparado' | 'No reparado')}
                         className="w-5 h-5 text-[#008606] border-gray-300 focus:ring-[#008606]"
                       />
-                      <span className="ml-3 text-sm sm:text-base font-medium text-gray-700">{servicio}</span>
+                      <span className="ml-3 text-sm sm:text-base font-medium text-gray-700">{opcion}</span>
                     </label>
                   ))}
                 </div>
-                {errors.reparacion && (
-                  <p className="text-red-600 text-sm mt-2">{errors.reparacion}</p>
+                {errors.resultado && (
+                  <p className="text-red-600 text-sm mt-2">{errors.resultado}</p>
                 )}
               </div>
 
-              {/* Sub-opciones para Cuadro Eléctrico */}
-              {formData.reparacion === 'Reparar el cuadro eléctrico' && (
+              {formData.resultado === 'Reparado' && (
                 <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-gray-50 rounded-lg p-4 border-l-4 border-[#008606]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-6"
                 >
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    ¿Qué has reparado en el cuadro eléctrico?
-                  </h3>
-                  <div className="space-y-3">
-                    {cuadroElectricoOptions.map((opcion) => (
-                      <label
-                        key={opcion}
-                        className={cn(
-                          "flex items-center p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-sm active:scale-95 touch-manipulation",
-                          formData.cuadroElectrico === opcion
-                            ? "border-[#008606] bg-[#008606]/5"
-                            : "border-gray-200 hover:border-gray-300 bg-white"
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name="cuadroElectrico"
-                          value={opcion}
-                          checked={formData.cuadroElectrico === opcion}
-                          onChange={() => handleCuadroElectricoChange(opcion)}
-                          className="w-5 h-5 text-[#008606] border-gray-300 focus:ring-[#008606]"
-                        />
-                        <span className="ml-3 text-sm sm:text-base text-gray-700">{opcion}</span>
-                      </label>
-                    ))}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      ¿Qué has tenido que reparar? *
+                    </label>
+                    <div className="space-y-3">
+                      {serviciosOptions.map((servicio) => (
+                        <label
+                          key={servicio}
+                          className={cn(
+                            "flex items-center p-4 sm:p-5 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md active:scale-95 touch-manipulation",
+                            formData.reparacion === servicio
+                              ? "border-[#008606] bg-[#008606]/10"
+                              : "border-gray-300 hover:border-gray-400"
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="reparacion"
+                            value={servicio}
+                            checked={formData.reparacion === servicio}
+                            onChange={() => handleReparacionChange(servicio)}
+                            className="w-5 h-5 text-[#008606] border-gray-300 focus:ring-[#008606]"
+                          />
+                          <span className="ml-3 text-sm sm:text-base font-medium text-gray-700">{servicio}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {errors.reparacion && (
+                      <p className="text-red-600 text-sm mt-2">{errors.reparacion}</p>
+                    )}
                   </div>
-                  {errors.cuadroElectrico && (
-                    <p className="text-red-600 text-sm mt-2">{errors.cuadroElectrico}</p>
+
+                  {formData.reparacion === 'Reparar el cuadro eléctrico' && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-gray-50 rounded-lg p-4 border-l-4 border-[#008606]"
+                    >
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        ¿Qué has reparado en el cuadro eléctrico?
+                      </h3>
+                      <div className="space-y-3">
+                        {cuadroElectricoOptions.map((opcion) => (
+                          <label
+                            key={opcion}
+                            className={cn(
+                              "flex items-center p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-sm active:scale-95 touch-manipulation",
+                              formData.cuadroElectrico === opcion
+                                ? "border-[#008606] bg-[#008606]/5"
+                                : "border-gray-200 hover:border-gray-300 bg-white"
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="cuadroElectrico"
+                              value={opcion}
+                              checked={formData.cuadroElectrico === opcion}
+                              onChange={() => handleCuadroElectricoChange(opcion)}
+                              className="w-5 h-5 text-[#008606] border-gray-300 focus:ring-[#008606]"
+                            />
+                            <span className="ml-3 text-sm sm:text-base text-gray-700">{opcion}</span>
+                          </label>
+                        ))}
+                      </div>
+                      {errors.cuadroElectrico && (
+                        <p className="text-red-600 text-sm mt-2">{errors.cuadroElectrico}</p>
+                      )}
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
+              {formData.resultado === 'No reparado' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <label htmlFor="problema" className="block text-sm font-medium text-gray-700 mb-2">
+                    ¿Cuál ha sido el problema? *
+                  </label>
+                  <textarea
+                    id="problema"
+                    value={formData.problema}
+                    onChange={(e) => handleInputChange('problema', e.target.value)}
+                    rows={4}
+                    className={cn(
+                      "w-full px-4 py-3 rounded-xl border transition-all duration-200 focus:shadow-md resize-none",
+                      errors.problema
+                        ? "border-red-300 focus:ring-2 focus:ring-red-200 focus:border-red-400"
+                        : "border-gray-300 focus:ring-2 focus:ring-green-200 focus:border-green-400"
+                    )}
+                    placeholder="Describe brevemente por qué no se ha podido completar la reparación"
+                  />
+                  {errors.problema && (
+                    <p className="text-red-600 text-sm mt-1">{errors.problema}</p>
                   )}
                 </motion.div>
               )}
@@ -530,7 +633,7 @@ export function RepairForm({
               </h2>
               
               <FileUpload
-                label="Foto de lo Reparado"
+                label="Foto del punto de recarga después de la intervención"
                 required
                 error={errors.foto}
                 onFileSelect={(selected) => handleFileChange('foto', selected)}
@@ -566,13 +669,13 @@ export function RepairForm({
         </AnimatePresence>
 
         {/* Navigation Buttons */}
-        <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-0 mt-8 pt-6 border-t border-gray-200">
+        <div className="flex flex-row items-center justify-between gap-3 flex-wrap mt-8 pt-6 border-t border-gray-200">
           <button
             type="button"
             onClick={prevStep}
             disabled={currentStep === 1 || isSubmitting}
             className={cn(
-              "flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-medium transition-all duration-200 touch-manipulation",
+              "flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-medium transition-all duration-200 touch-manipulation",
               currentStep === 1 || isSubmitting
                 ? "text-gray-400 cursor-not-allowed"
                 : "text-gray-600 hover:text-gray-800 hover:bg-gray-100 active:scale-95"
@@ -587,7 +690,7 @@ export function RepairForm({
               type="button"
               onClick={nextStep}
               disabled={isSubmitting}
-              className="flex items-center justify-center gap-2 bg-[#008606] hover:bg-[#008606]/90 active:scale-95 text-white font-semibold px-6 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl touch-manipulation"
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 bg-[#008606] hover:bg-[#008606]/90 active:scale-95 text-white font-semibold px-6 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl touch-manipulation"
             >
               Avanzar
               <ChevronRight className="w-5 h-5" />
@@ -597,7 +700,7 @@ export function RepairForm({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-green-300 disabled:to-emerald-300 active:scale-95 text-white font-semibold px-6 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl touch-manipulation"
+              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-green-300 disabled:to-emerald-300 active:scale-95 text-white font-semibold px-6 py-4 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl touch-manipulation"
             >
               {isSubmitting ? (
                 <>

@@ -16,13 +16,58 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📥 Request body:', JSON.stringify(body, null, 2));
     
+    const resultado = typeof body.Resultado === 'string' ? body.Resultado.trim() : '';
+    const reparacion = typeof body.Reparación === 'string' ? body.Reparación.trim() : '';
+    const cuadroElectrico = typeof body['Cuadro eléctrico'] === 'string' ? body['Cuadro eléctrico'].trim() : '';
+    const problema = typeof body.Problema === 'string' ? body.Problema.trim() : '';
+
     // Validation - only require essential fields
-    if (!body.Reparación || !body.Cliente || !body.Técnico) {
+    if (!resultado) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: Reparación, Cliente y Técnico son obligatorios' },
+        { error: 'El campo Resultado es obligatorio' },
         { status: 400 }
       );
     }
+
+    if (!['Reparado', 'No reparado'].includes(resultado)) {
+      return NextResponse.json(
+        { error: 'Valor de Resultado no válido' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.Cliente || !body.Técnico) {
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos: Cliente y Técnico son obligatorios' },
+        { status: 400 }
+      );
+    }
+
+    if (resultado === 'Reparado' && !reparacion) {
+      return NextResponse.json(
+        { error: 'Selecciona el tipo de reparación realizada' },
+        { status: 400 }
+      );
+    }
+
+    if (resultado === 'Reparado' && reparacion === 'Reparar el cuadro eléctrico' && !cuadroElectrico) {
+      return NextResponse.json(
+        { error: 'Selecciona qué se reparó en el cuadro eléctrico' },
+        { status: 400 }
+      );
+    }
+
+    if (resultado === 'No reparado' && !problema) {
+      return NextResponse.json(
+        { error: 'Describe el problema encontrado' },
+        { status: 400 }
+      );
+    }
+
+    body.Resultado = resultado;
+    body.Reparación = reparacion;
+    body['Cuadro eléctrico'] = cuadroElectrico;
+    body.Problema = problema;
 
     // Create the repair record
     const result = await createRepair(body);
@@ -62,8 +107,10 @@ export async function GET(request: NextRequest) {
       tecnico: fields['Técnico'] || '',
       cliente: fields['Cliente'] || '',
       direccion: fields['Dirección'] || '',
+      resultado: fields['Resultado'] || '',
       reparacion: fields['Reparación'] || '',
       cuadroElectrico: fields['Cuadro eléctrico'] || '',
+      problema: fields['Problema'] || '',
       factura: fields['Factura'] || [],
       foto: fields['Foto'] || [],
     });
@@ -97,17 +144,21 @@ export async function PUT(request: NextRequest) {
     const fieldsToUpdate: Record<string, any> = {};
 
     const textFields: Array<[string, string]> = [
+      ['Resultado', 'Resultado'],
       ['Reparación', 'Reparación'],
       ['Cuadro eléctrico', 'Cuadro eléctrico'],
+      ['Problema', 'Problema'],
       ['Técnico', 'Técnico'],
       ['Cliente', 'Cliente'],
       ['Dirección', 'Dirección'],
     ];
 
     textFields.forEach(([bodyKey, airtableField]) => {
-      if (bodyKey in body && typeof body[bodyKey] === 'string') {
-        if (body[bodyKey].trim().length > 0) {
-          fieldsToUpdate[airtableField] = body[bodyKey];
+      if (bodyKey in body) {
+        const value = body[bodyKey];
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          fieldsToUpdate[airtableField] = trimmed.length > 0 ? trimmed : '';
         }
       }
     });
