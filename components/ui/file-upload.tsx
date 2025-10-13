@@ -23,24 +23,47 @@ export function FileUpload({
     'application/pdf': ['.pdf'],
   },
   maxFiles = 1,
-  maxSize = 5 * 1024 * 1024, // 5MB
+  maxSize = 5 * 1024 * 1024, // 5MB default
   className,
   label,
   required,
   error,
 }: FileUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadError, setUploadError] = useState<string>('');
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  // Detect mobile and adjust maxSize
+  const isMobile = typeof window !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  const effectiveMaxSize = isMobile ? Math.min(maxSize, 5 * 1024 * 1024) : maxSize;
+
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    setUploadError('');
+    
+    // Handle rejected files
+    if (rejectedFiles && rejectedFiles.length > 0) {
+      const rejection = rejectedFiles[0];
+      if (rejection.errors && rejection.errors.length > 0) {
+        const errorCode = rejection.errors[0].code;
+        if (errorCode === 'file-too-large') {
+          setUploadError(`El archivo es demasiado grande. Máximo ${Math.round(effectiveMaxSize / 1024 / 1024)}MB`);
+        } else if (errorCode === 'file-invalid-type') {
+          setUploadError('Tipo de archivo no permitido');
+        } else {
+          setUploadError('Error al seleccionar el archivo');
+        }
+      }
+      return;
+    }
+
     setFiles(acceptedFiles);
     onFileSelect(acceptedFiles);
-  }, [onFileSelect]);
+  }, [onFileSelect, effectiveMaxSize]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept,
     maxFiles,
-    maxSize,
+    maxSize: effectiveMaxSize,
   });
 
   const removeFile = (index: number) => {
@@ -76,7 +99,7 @@ export function FileUpload({
               <span className="hidden sm:inline"> o arrástralos aquí</span>
             </p>
             <p className="text-xs text-gray-500">
-              Máximo {maxFiles} archivo{maxFiles > 1 ? 's' : ''}, hasta {Math.round(maxSize / 1024 / 1024)}MB
+              Máximo {maxFiles} archivo{maxFiles > 1 ? 's' : ''}, hasta {Math.round(effectiveMaxSize / 1024 / 1024)}MB
             </p>
           </div>
         )}
@@ -105,8 +128,8 @@ export function FileUpload({
         </div>
       )}
 
-      {error && (
-        <p className="text-red-600 text-sm mt-1">{error}</p>
+      {(error || uploadError) && (
+        <p className="text-red-600 text-sm mt-1">{error || uploadError}</p>
       )}
     </div>
   );

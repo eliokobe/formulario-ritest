@@ -172,11 +172,21 @@ export function RepairForm({
       let facturaUploads: any[] = [];
       let fotoUploads: any[] = [];
       
-      if (files.factura.length > 0) {
-        facturaUploads = await uploadFiles(files.factura);
-      }
-      if (files.foto.length > 0) {
-        fotoUploads = await uploadFiles(files.foto);
+      try {
+        if (files.factura.length > 0) {
+          facturaUploads = await uploadFiles(files.factura);
+        }
+        if (files.foto.length > 0) {
+          fotoUploads = await uploadFiles(files.foto);
+        }
+      } catch (uploadError: any) {
+        // Show specific error message from upload
+        const errorMsg = typeof uploadError?.message === 'string' 
+          ? uploadError.message 
+          : 'Error al procesar los archivos. Verifica que sean válidos.';
+        onRepairError(errorMsg);
+        setIsSubmitting(false);
+        return;
       }
 
       const isRepaired = formData.resultado === 'Reparado';
