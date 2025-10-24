@@ -39,6 +39,7 @@ export function RepairForm({
   const [existingAttachments, setExistingAttachments] = useState({
     factura: [] as any[],
     foto: [] as any[],
+    fotoEtiqueta: [] as any[],
   });
   
   const [formData, setFormData] = useState({
@@ -57,6 +58,7 @@ export function RepairForm({
   const [files, setFiles] = useState({
     factura: [] as File[],
     foto: [] as File[],
+    fotoEtiqueta: [] as File[],
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,6 +96,7 @@ export function RepairForm({
         setExistingAttachments({
           factura: Array.isArray(data.factura) ? data.factura : [],
           foto: Array.isArray(data.foto) ? data.foto : [],
+          fotoEtiqueta: Array.isArray(data.fotoEtiqueta) ? data.fotoEtiqueta : [],
         });
       } else if (response.status === 404) {
         onRepairError(`Expediente ${expedienteId} no encontrado`);
@@ -145,6 +148,12 @@ export function RepairForm({
         if (files.foto.length === 0 && existingAttachments.foto.length === 0) {
           newErrors.foto = 'Adjunta al menos una foto del punto de recarga después de la intervención';
         }
+        // Si se seleccionó "Sustituir el punto de recarga", la foto de la etiqueta es obligatoria
+        if (formData.reparacion === 'Sustituir el punto de recarga') {
+          if (files.fotoEtiqueta.length === 0 && existingAttachments.fotoEtiqueta.length === 0) {
+            newErrors.fotoEtiqueta = 'La foto de la etiqueta del nuevo equipo es obligatoria';
+          }
+        }
         break;
     }
 
@@ -171,6 +180,7 @@ export function RepairForm({
       // Upload files if any
       let facturaUploads: any[] = [];
       let fotoUploads: any[] = [];
+      let fotoEtiquetaUploads: any[] = [];
       
       try {
         if (files.factura.length > 0) {
@@ -178,6 +188,9 @@ export function RepairForm({
         }
         if (files.foto.length > 0) {
           fotoUploads = await uploadFiles(files.foto);
+        }
+        if (files.fotoEtiqueta.length > 0) {
+          fotoEtiquetaUploads = await uploadFiles(files.fotoEtiqueta);
         }
       } catch (uploadError: any) {
         // Show specific error message from upload
@@ -202,6 +215,7 @@ export function RepairForm({
         Dirección: formData.direccion,
         Factura: facturaUploads.length > 0 ? facturaUploads : undefined,
         Foto: fotoUploads.length > 0 ? fotoUploads : undefined,
+        "Foto de la etiqueta": fotoEtiquetaUploads.length > 0 ? fotoEtiquetaUploads : undefined,
       };
 
       // When editing, clear fields that don't apply based on result
@@ -305,7 +319,7 @@ export function RepairForm({
     }
   };
 
-  const handleFileChange = (field: 'foto' | 'factura', selectedFiles: File[]) => {
+  const handleFileChange = (field: 'foto' | 'factura' | 'fotoEtiqueta', selectedFiles: File[]) => {
     setFiles(prev => ({ ...prev, [field]: selectedFiles }));
     setExistingAttachments(prev => ({
       ...prev,
@@ -659,6 +673,32 @@ export function RepairForm({
                 <p className="text-sm text-gray-500 -mt-2">
                   Ya hay {existingAttachments.foto.length === 1 ? 'una foto' : `${existingAttachments.foto.length} fotos`} almacenada para este expediente.
                 </p>
+              )}
+
+              {/* Mostrar campo de foto de etiqueta solo si se seleccionó "Sustituir el punto de recarga" */}
+              {formData.reparacion === 'Sustituir el punto de recarga' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <FileUpload
+                    label="Foto de la etiqueta del nuevo equipo"
+                    required
+                    error={errors.fotoEtiqueta}
+                    onFileSelect={(selected) => handleFileChange('fotoEtiqueta', selected)}
+                    accept={{
+                      'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
+                    }}
+                    maxFiles={2}
+                    maxSize={5 * 1024 * 1024}
+                  />
+                  {existingAttachments.fotoEtiqueta.length > 0 && files.fotoEtiqueta.length === 0 && (
+                    <p className="text-sm text-gray-500 -mt-2">
+                      Ya hay {existingAttachments.fotoEtiqueta.length === 1 ? 'una foto' : `${existingAttachments.fotoEtiqueta.length} fotos`} de la etiqueta almacenada.
+                    </p>
+                  )}
+                </motion.div>
               )}
 
               <FileUpload

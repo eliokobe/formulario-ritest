@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
       problema: fields['Problema'] || '',
       factura: fields['Factura'] || [],
       foto: fields['Foto'] || [],
+      fotoEtiqueta: fields['Foto de la etiqueta'] || [],
     });
   } catch (error: any) {
     console.error('Get repairs error:', error);
@@ -184,6 +185,7 @@ export async function PUT(request: NextRequest) {
     const attachmentFields: Array<[string, string]> = [
       ['Foto', 'Foto'],
       ['Factura', 'Factura'],
+      ['Foto de la etiqueta', 'Foto de la etiqueta'],
     ];
 
     for (const [bodyKey, airtableField] of attachmentFields) {
