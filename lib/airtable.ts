@@ -108,6 +108,22 @@ export async function listRecords(tableName: string, params?: Record<string, str
   }
 }
 
+export async function getRecordById(tableName: string, recordId: string): Promise<any> {
+  const url = `${getBaseUrl(tableName)}/${recordId}`;
+
+  try {
+    const response = await makeRequest(url);
+    if (!response) {
+      throw new Error('No response received from Airtable');
+    }
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error(`Error getting record ${recordId} from ${tableName}:`, error);
+    throw new Error(`Failed to get record from ${tableName}`);
+  }
+}
+
 export async function updateRecord(tableName: string, id: string, fields: Record<string, any>): Promise<{ id: string }> {
   console.log('🔧 updateRecord called with:');
   console.log('  tableName:', tableName);
@@ -202,6 +218,10 @@ export async function findRepairByExpediente(expediente: string): Promise<any[]>
   });
 }
 
+export async function getRepairById(recordId: string): Promise<any> {
+  return getRecordById(AIRTABLE_TABLE_REPARACIONES!, recordId);
+}
+
 export async function updateRepairRecord(recordId: string, data: any): Promise<{ id: string }> {
   return updateRecord(AIRTABLE_TABLE_REPARACIONES!, recordId, data);
 }
@@ -212,6 +232,10 @@ export async function findFormularioByExpediente(expediente: string): Promise<an
     filterByFormula: `{Expediente} = '${expediente}'`,
     maxRecords: '1',
   });
+}
+
+export async function getFormularioById(recordId: string): Promise<any> {
+  return getRecordById(AIRTABLE_TABLE_FORMULARIO!, recordId);
 }
 
 export async function updateFormulario(recordId: string, data: any): Promise<{ id: string }> {

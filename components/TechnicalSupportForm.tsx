@@ -45,6 +45,7 @@ interface TechnicalSupportFormProps {
 export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [recordId, setRecordId] = useState<string>('');
   const [expediente, setExpediente] = useState<string>('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [existingData, setExistingData] = useState<any>(null);
@@ -77,17 +78,23 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
   // Cargar datos del expediente si existe en la URL
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
+    const recordParam = urlParams.get('record');
     const expedienteParam = urlParams.get('expediente');
     
-    if (expedienteParam) {
+    // Priorizar record sobre expediente
+    if (recordParam) {
+      setRecordId(recordParam);
+      loadRecordData(recordParam, 'record');
+    } else if (expedienteParam) {
       setExpediente(expedienteParam);
-      loadExpedienteData(expedienteParam);
+      loadRecordData(expedienteParam, 'expediente');
     }
   }, []);
 
-  const loadExpedienteData = async (expedienteId: string) => {
+  const loadRecordData = async (id: string, paramType: 'record' | 'expediente') => {
     try {
-      const response = await fetch(`/api/expediente?expediente=${expedienteId}`);
+      const queryParam = paramType === 'record' ? `record=${id}` : `expediente=${id}`;
+      const response = await fetch(`/api/expediente?${queryParam}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -108,11 +115,11 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
         // Nota: Los archivos de Airtable se mostrarían como links, no como File objects
         // Para una implementación completa, necesitarías convertir URLs a File objects
       } else if (response.status === 404) {
-        onError(`Expediente ${expedienteId} no encontrado`);
+        onError(`Registro ${id} no encontrado`);
       }
     } catch (error) {
-      console.error('Error cargando expediente:', error);
-      onError('Error al cargar los datos del expediente');
+      console.error('Error cargando registro:', error);
+      onError('Error al cargar los datos del registro');
     }
   };
 
@@ -220,19 +227,20 @@ export function TechnicalSupportForm({ onComplete, onError }: TechnicalSupportFo
       };
 
       // Decidir si crear nuevo registro o actualizar existente
-      if (isEditMode && expediente) {
-        // Actualizar expediente existente
-        const response = await fetch(`/api/expediente?expediente=${expediente}`, {
+      if (isEditMode && (recordId || expediente)) {
+        // Actualizar registro existente
+        const queryParam = recordId ? `record=${recordId}` : `expediente=${expediente}`;
+        const response = await fetch(`/api/expediente?${queryParam}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(supportData),
         });
 
         if (!response.ok) {
-          throw new Error('Error al actualizar el expediente');
+          throw new Error('Error al actualizar el registro');
         }
 
-        console.log('Expediente actualizado:', supportData);
+        console.log('Registro actualizado:', supportData);
       } else {
         // Crear nuevo registro (implementación futura si es necesario)
         const response = await fetch('/api/technical-support', {

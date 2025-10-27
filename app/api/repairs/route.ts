@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { 
   createRepair, 
-  findRepairByExpediente, 
+  findRepairByExpediente,
+  getRepairById, 
   updateRepairRecord, 
   uploadImageToAirtable 
 } from '@/lib/airtable';
@@ -87,19 +88,30 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+    const recordId = searchParams.get('record');
     const expediente = searchParams.get('expediente');
 
-    if (!expediente) {
-      return NextResponse.json({ error: 'Expediente requerido' }, { status: 400 });
+    if (!recordId && !expediente) {
+      return NextResponse.json({ error: 'Se requiere record o expediente' }, { status: 400 });
     }
 
-    const records = await findRepairByExpediente(expediente);
-
-    if (records.length === 0) {
-      return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+    let record;
+    
+    if (recordId) {
+      // Buscar por record ID directamente
+      record = await getRepairById(recordId);
+      if (!record) {
+        return NextResponse.json({ error: 'Registro no encontrado' }, { status: 404 });
+      }
+    } else {
+      // Buscar por expediente (mantener compatibilidad)
+      const records = await findRepairByExpediente(expediente!);
+      if (records.length === 0) {
+        return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+      }
+      record = records[0];
     }
 
-    const record = records[0];
     const fields = record.fields || {};
 
     return NextResponse.json({
@@ -127,22 +139,30 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const recordId = searchParams.get('record');
   const expediente = searchParams.get('expediente');
 
-  if (!expediente) {
-    return NextResponse.json({ error: 'Expediente requerido' }, { status: 400 });
+  if (!recordId && !expediente) {
+    return NextResponse.json({ error: 'Se requiere record o expediente' }, { status: 400 });
   }
 
   try {
     const body = await request.json();
 
-    const records = await findRepairByExpediente(expediente);
-
-    if (records.length === 0) {
-      return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+    let targetRecordId: string;
+    
+    if (recordId) {
+      // Usar el record ID directamente
+      targetRecordId = recordId;
+    } else {
+      // Buscar por expediente (mantener compatibilidad)
+      const records = await findRepairByExpediente(expediente!);
+      if (records.length === 0) {
+        return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+      }
+      targetRecordId = records[0].id;
     }
 
-    const recordId = records[0].id;
     const fieldsToUpdate: Record<string, any> = {};
 
     // Define fields that are select/multiple-select in Airtable
@@ -179,7 +199,7 @@ export async function PUT(request: NextRequest) {
     });
 
     if (Object.keys(fieldsToUpdate).length > 0) {
-      await updateRepairRecord(recordId, fieldsToUpdate);
+      await updateRepairRecord(targetRecordId, fieldsToUpdate);
     }
 
     const attachmentFields: Array<[string, string]> = [
@@ -192,15 +212,15 @@ export async function PUT(request: NextRequest) {
       const attachments = Array.isArray(body[bodyKey]) ? body[bodyKey] : [];
       if (attachments.length > 0) {
         // Clear existing attachments before uploading new ones
-        await updateRepairRecord(recordId, { [airtableField]: [] });
+        await updateRepairRecord(targetRecordId, { [airtableField]: [] });
 
         for (const attachment of attachments) {
-          await uploadImageToAirtable(recordId, airtableField, attachment);
+          await uploadImageToAirtable(targetRecordId, airtableField, attachment);
         }
       }
     }
 
-    return NextResponse.json({ success: true, expediente, recordId });
+    return NextResponse.json({ success: true, recordId: targetRecordId });
   } catch (error: any) {
     console.error('Update repair error:', error);
     const message = typeof error?.message === 'string' ? error.message : 'Error al actualizar la reparación';

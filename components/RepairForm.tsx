@@ -34,6 +34,7 @@ export function RepairForm({
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [recordId, setRecordId] = useState<string>('');
   const [expediente, setExpediente] = useState<string>('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [existingAttachments, setExistingAttachments] = useState({
@@ -65,14 +66,56 @@ export function RepairForm({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const recordParam = params.get('record');
     const expedienteParam = params.get('expediente');
 
-    if (expedienteParam) {
+    if (recordParam) {
+      setRecordId(recordParam);
+      setIsLoading(true);
+      loadRecordData(recordParam);
+    } else if (expedienteParam) {
       setExpediente(expedienteParam);
       setIsLoading(true);
       loadExpedienteData(expedienteParam);
     }
   }, []);
+
+  const loadRecordData = async (record: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/repairs?record=${encodeURIComponent(record)}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsEditMode(true);
+        const isRepaired = data.resultado === 'Reparado';
+        setFormData(prev => ({
+          ...prev,
+          cliente: data.cliente || '',
+          direccion: data.direccion || '',
+          tecnico: data.tecnico || '',
+          resultado: data.resultado || '',
+          reparacion: isRepaired ? data.reparacion || '' : '',
+          cuadroElectrico: isRepaired ? data.cuadroElectrico || '' : '',
+          problema: !isRepaired ? data.problema || '' : '',
+        }));
+        setExistingAttachments({
+          factura: Array.isArray(data.factura) ? data.factura : [],
+          foto: Array.isArray(data.foto) ? data.foto : [],
+          fotoEtiqueta: Array.isArray(data.fotoEtiqueta) ? data.fotoEtiqueta : [],
+        });
+      } else if (response.status === 404) {
+        onRepairError(`Registro ${record} no encontrado`);
+      } else {
+        onRepairError('No se pudo cargar la información de la reparación');
+      }
+    } catch (error) {
+      console.error('Error cargando registro:', error);
+      onRepairError('Error al cargar los datos del registro');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadExpedienteData = async (expedienteId: string) => {
     setIsLoading(true);
@@ -82,6 +125,7 @@ export function RepairForm({
       if (response.ok) {
         const data = await response.json();
         setIsEditMode(true);
+        setRecordId(data.id); // Guardar el recordId para futuras actualizaciones
         const isRepaired = data.resultado === 'Reparado';
         setFormData(prev => ({
           ...prev,
@@ -232,12 +276,16 @@ export function RepairForm({
         }
       }
 
-      const isUpdate = isEditMode && Boolean(expediente);
+      const isUpdate = isEditMode && (Boolean(recordId) || Boolean(expediente));
       if (!isUpdate && expediente) {
         (repairData as any).Expediente = expediente;
       }
+      
+      // Priorizar record ID sobre expediente
       const endpoint = isUpdate
-        ? `/api/repairs?expediente=${encodeURIComponent(expediente)}`
+        ? recordId 
+          ? `/api/repairs?record=${encodeURIComponent(recordId)}`
+          : `/api/repairs?expediente=${encodeURIComponent(expediente)}`
         : '/api/repairs';
 
       const response = await fetch(endpoint, {

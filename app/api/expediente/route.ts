@@ -1,23 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { findFormularioByExpediente, updateFormulario, uploadImageToAirtable } from '@/lib/airtable';
+import { findFormularioByExpediente, getFormularioById, updateFormulario, uploadImageToAirtable } from '@/lib/airtable';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
+  const recordId = searchParams.get('record');
   const expediente = searchParams.get('expediente');
 
-  if (!expediente) {
-    return NextResponse.json({ error: 'Expediente requerido' }, { status: 400 });
+  if (!recordId && !expediente) {
+    return NextResponse.json({ error: 'Se requiere record o expediente' }, { status: 400 });
   }
 
   try {
-    // Buscar registro por expediente
-    const records = await findFormularioByExpediente(expediente);
-
-    if (records.length === 0) {
-      return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+    let record;
+    
+    if (recordId) {
+      // Buscar por record ID directamente
+      record = await getFormularioById(recordId);
+      if (!record) {
+        return NextResponse.json({ error: 'Registro no encontrado' }, { status: 404 });
+      }
+    } else {
+      // Buscar por expediente (mantener compatibilidad)
+      const records = await findFormularioByExpediente(expediente!);
+      if (records.length === 0) {
+        return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+      }
+      record = records[0];
     }
 
-    const record = records[0];
     const data = {
       id: record.id,
       expediente: record.fields['Expediente'],
@@ -42,12 +52,13 @@ export async function PUT(request: NextRequest) {
   console.log('🚀 PUT /api/expediente - Starting request');
   
   const { searchParams } = new URL(request.url);
+  const recordId = searchParams.get('record');
   const expediente = searchParams.get('expediente');
-  console.log('📋 Expediente parameter:', expediente);
+  console.log('📋 Parameters - Record:', recordId, 'Expediente:', expediente);
 
-  if (!expediente) {
-    console.log('❌ No expediente provided');
-    return NextResponse.json({ error: 'Expediente requerido' }, { status: 400 });
+  if (!recordId && !expediente) {
+    console.log('❌ No record or expediente provided');
+    return NextResponse.json({ error: 'Se requiere record o expediente' }, { status: 400 });
   }
 
   try {
@@ -67,78 +78,84 @@ export async function PUT(request: NextRequest) {
       }
     });
 
-    console.log('🔍 Searching for expediente in Airtable...');
-    // Buscar registro por expediente
-    const records = await findFormularioByExpediente(expediente);
-    console.log('🔍 Found records:', records.length);
+    let targetRecordId: string;
+    
+    if (recordId) {
+      // Usar el record ID directamente
+      targetRecordId = recordId;
+      console.log('✅ Using record ID directly:', targetRecordId);
+    } else {
+      // Buscar por expediente (mantener compatibilidad)
+      console.log('🔍 Searching for expediente in Airtable...');
+      const records = await findFormularioByExpediente(expediente!);
+      console.log('🔍 Found records:', records.length);
 
-    if (records.length === 0) {
-      console.log('❌ Expediente not found in database');
-      return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+      if (records.length === 0) {
+        console.log('❌ Expediente not found in database');
+        return NextResponse.json({ error: 'Expediente no encontrado' }, { status: 404 });
+      }
+      targetRecordId = records[0].id;
+      console.log('✅ Found record ID:', targetRecordId);
     }
-
-    const recordId = records[0].id;
-    console.log('✅ Found record ID:', recordId);
 
     // Preparar campos de texto para actualizar
     const fieldsToUpdate: any = {};
     
     console.log('🔧 Preparing text fields to update...');
     if (body['Cliente']) {
-      console.log('� Processing Cliente');
+      console.log('📝 Processing Cliente');
       fieldsToUpdate['Cliente'] = body['Cliente'];
     }
     if (body['Teléfono']) {
-      console.log('� Processing Teléfono');
+      console.log('📝 Processing Teléfono');
       fieldsToUpdate['Teléfono'] = body['Teléfono'];
     }
     if (body['Dirección']) {
-      console.log('� Processing Dirección');
+      console.log('📝 Processing Dirección');
       fieldsToUpdate['Dirección'] = body['Dirección'];
     }
     if (body['Problema']) {
-      console.log('� Processing Problema');
+      console.log('📝 Processing Problema');
       fieldsToUpdate['Problema'] = body['Problema'];
     }
     if (body['Detalles']) {
-      console.log('� Processing Detalles');
+      console.log('📝 Processing Detalles');
       fieldsToUpdate['Detalles'] = body['Detalles'];
     }
     
     // No actualizamos fecha automáticamente porque el campo no existe en Airtable
-    console.log('� Skipping timestamp - field does not exist in Airtable');
+    console.log('⏭️ Skipping timestamp - field does not exist in Airtable');
 
     console.log('🔧 Text fields to update keys:', Object.keys(fieldsToUpdate));
 
     // Actualizar campos de texto primero
     let updatedRecord;
     if (Object.keys(fieldsToUpdate).length > 0) {
-      console.log('� Updating text fields in Airtable...');
-      updatedRecord = await updateFormulario(recordId, fieldsToUpdate);
+      console.log('💾 Updating text fields in Airtable...');
+      updatedRecord = await updateFormulario(targetRecordId, fieldsToUpdate);
       console.log('✅ Text fields updated successfully');
     }
 
     // Subir imágenes usando el endpoint específico de Airtable
     if (body['Foto general'] && Array.isArray(body['Foto general']) && body['Foto general'].length > 0) {
       console.log('📸 Uploading Foto general...');
-      await uploadImageToAirtable(recordId, 'Foto general', body['Foto general'][0]);
+      await uploadImageToAirtable(targetRecordId, 'Foto general', body['Foto general'][0]);
     }
     
     if (body['Foto etiqueta'] && Array.isArray(body['Foto etiqueta']) && body['Foto etiqueta'].length > 0) {
-      console.log('� Uploading Foto etiqueta...');
-      await uploadImageToAirtable(recordId, 'Foto etiqueta', body['Foto etiqueta'][0]);
+      console.log('🏷️ Uploading Foto etiqueta...');
+      await uploadImageToAirtable(targetRecordId, 'Foto etiqueta', body['Foto etiqueta'][0]);
     }
 
     if (body['Foto roto'] && Array.isArray(body['Foto roto']) && body['Foto roto'].length > 0) {
-      console.log('� Uploading Foto roto...');
-      await uploadImageToAirtable(recordId, 'Foto roto', body['Foto roto'][0]);
+      console.log('🔴 Uploading Foto roto...');
+      await uploadImageToAirtable(targetRecordId, 'Foto roto', body['Foto roto'][0]);
     }
     console.log('✅ Record updated successfully');
 
     return NextResponse.json({ 
       success: true, 
-      recordId: recordId,
-      expediente: expediente 
+      recordId: targetRecordId,
     });
   } catch (error: any) {
     console.error('❌ DETAILED ERROR in PUT /api/expediente:');
